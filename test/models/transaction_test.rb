@@ -9,6 +9,15 @@ class TransactionTest < ActiveSupport::TestCase
     assert_includes transaction.errors[:amount], "can't be blank"
   end
 
+  test "is valid without a category" do
+    assert build(:transaction, category: nil).valid?
+  end
+
+  test "can belong to a category" do
+    category = create(:category)
+    assert_equal category, create(:transaction, category: category).reload.category
+  end
+
   test "rejects a non-numeric amount" do
     transaction = build(:transaction, amount: "abc")
     assert_not transaction.valid?

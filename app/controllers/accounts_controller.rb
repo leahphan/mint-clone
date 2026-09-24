@@ -5,7 +5,7 @@ class AccountsController < ApplicationController
 
   def show
     @account = Account.find(params[:id])
-    @transactions = @account.transactions.newest_first
+    @transactions = @account.transactions.includes(:category).newest_first
   end
 
   def new

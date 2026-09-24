@@ -12,6 +12,8 @@
         <th>Date</th>
         <th>Description</th>
         <th>Amount</th>
+        <th>Category</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -20,6 +22,8 @@
           <td><%= transaction.transaction_date %></td>
           <td><%= transaction.description %></td>
           <td><%= number_to_currency transaction.amount %></td>
+          <td><%= transaction.category&.name || "Uncategorized" %></td>
+          <td><%= link_to "Edit", edit_account_transaction_path(@account, transaction) %></td>
         </tr>
       <% end %>
     </tbody>

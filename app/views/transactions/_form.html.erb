@@ -1,0 +1,32 @@
+<%= form_with model: [ @account, transaction ] do |form| %>
+  <% if transaction.errors.any? %>
+    <ul>
+      <% transaction.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <div>
+    <%= form.label :transaction_date, "Date" %>
+    <%= form.date_field :transaction_date %>
+  </div>
+
+  <div>
+    <%= form.label :description %>
+    <%= form.text_field :description %>
+  </div>
+
+  <div>
+    <%= form.label :amount %>
+    <%= form.number_field :amount, step: "0.01" %>
+    <small>Negative for money out, positive for money in.</small>
+  </div>
+
+  <div>
+    <%= form.label :category_id, "Category" %>
+    <%= form.collection_select :category_id, Category.order(:name), :id, :name, include_blank: "Uncategorized" %>
+  </div>
+
+  <%= form.submit transaction.new_record? ? "Add transaction" : "Update transaction" %>
+<% end %>

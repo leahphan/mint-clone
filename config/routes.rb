@@ -13,6 +13,8 @@ Rails.application.routes.draw do
   root "accounts#index"
 
   resources :accounts, only: %i[index show new create] do
-    resources :transactions, only: %i[new create]
+    resources :transactions, only: %i[new create edit update]
   end
+
+  resources :categories, only: %i[index create]
 end
