@@ -1,0 +1,27 @@
+<% content_for :title, "New account" %>
+
+<h1>New account</h1>
+
+<%= form_with model: @account do |form| %>
+  <% if @account.errors.any? %>
+    <ul>
+      <% @account.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <div>
+    <%= form.label :name %>
+    <%= form.text_field :name %>
+  </div>
+
+  <div>
+    <%= form.label :account_type %>
+    <%= form.select :account_type, Account.account_types.keys.map { |type| [ type.humanize, type ] }, include_blank: true %>
+  </div>
+
+  <%= form.submit "Create account" %>
+<% end %>
+
+<%= link_to "Back to accounts", accounts_path %>

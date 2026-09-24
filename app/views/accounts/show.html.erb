@@ -1,0 +1,31 @@
+<% content_for :title, @account.name %>
+
+<h1><%= @account.name %></h1>
+<p><%= @account.account_type.humanize %></p>
+
+<%= link_to "Add transaction", new_account_transaction_path(@account) %>
+
+<% if @transactions.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @transactions.each do |transaction| %>
+        <tr>
+          <td><%= transaction.transaction_date %></td>
+          <td><%= transaction.description %></td>
+          <td><%= number_to_currency transaction.amount %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p>No transactions yet.</p>
+<% end %>
+
+<%= link_to "Back to accounts", accounts_path %>
