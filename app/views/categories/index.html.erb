@@ -2,14 +2,12 @@
 
 <%= render "shared/page_header", title: "Categories", subtitle: "Group your transactions so you can see where your money goes." %>
 
-<div class="grid gap-6 lg:grid-cols-[1fr_22rem]">
-  <%= render layout: "shared/card", locals: { title: "Your categories" } do %>
+<div class="grid gap-5 lg:grid-cols-[1fr_18rem]">
+  <%= render layout: "shared/panel", locals: { title: "Your categories", meta: pluralize(@categories.size, "category") } do %>
     <% if @categories.any? %>
-      <ul class="divide-y divide-mint-line/60">
+      <ul class="panel-list">
         <% @categories.each do |category| %>
-          <li class="flex items-center gap-3 px-5 py-3 text-sm font-semibold">
-            <span class="status-dot bg-mint-green" aria-hidden="true"></span><%= category.name %>
-          </li>
+          <li><%= category.name %></li>
         <% end %>
       </ul>
     <% else %>
@@ -17,8 +15,8 @@
     <% end %>
   <% end %>
 
-  <%= render layout: "shared/card", locals: { title: "New category", css: "self-start" } do %>
-    <%= form_with model: @category, class: "space-y-5 p-5" do |form| %>
+  <%= render layout: "shared/panel", locals: { title: "New category", css: "self-start" } do %>
+    <%= form_with model: @category, class: "panel-body space-y-4" do |form| %>
       <%= render "shared/form_errors", record: @category %>
 
       <div>

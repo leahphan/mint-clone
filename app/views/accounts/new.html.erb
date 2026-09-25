@@ -3,24 +3,7 @@
 <div class="mx-auto max-w-xl">
   <%= render "shared/page_header", title: "Add an account" %>
 
-  <%= render layout: "shared/card" do %>
-    <%= form_with model: @account, class: "space-y-5 p-5" do |form| %>
-      <%= render "shared/form_errors", record: @account %>
-
-      <div>
-        <%= form.label :name, class: "form-label" %>
-        <%= form.text_field :name, class: "form-input", placeholder: "e.g. Everyday Chequing" %>
-      </div>
-
-      <div>
-        <%= form.label :account_type, class: "form-label" %>
-        <%= form.select :account_type, Account.account_types.keys.map { |type| [ type.humanize, type ] }, { include_blank: true }, class: "form-input" %>
-      </div>
-
-      <div class="flex items-center justify-between gap-4 pt-2">
-        <%= link_to "Cancel", accounts_path, class: "btn-link text-sm" %>
-        <%= form.submit "Create account", class: "btn btn-primary" %>
-      </div>
-    <% end %>
+  <%= render layout: "shared/panel", locals: { title: "Account details" } do %>
+    <%= render "form", account: @account, submit_label: "Create account", cancel_path: accounts_path %>
   <% end %>
 </div>

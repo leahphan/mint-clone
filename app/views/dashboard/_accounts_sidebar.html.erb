@@ -1,0 +1,22 @@
+<%# locals: (account_groups:) -%>
+<%= render layout: "shared/panel", locals: { title: "Accounts", meta: link_to("+ Add", new_account_path, class: "btn-link"), css: "self-start", element: :aside } do %>
+  <% account_groups.each do |group, accounts| %>
+    <section class="border-b border-mint-line last:border-b-0">
+      <div class="flex items-center justify-between px-3 pt-2.5 pb-1 text-xs">
+        <h3 class="font-bold tracking-wide text-mint-muted uppercase"><%= group %></h3>
+        <%= amount_tag accounts.sum(0, &:balance) %>
+      </div>
+
+      <ul class="pb-1.5">
+        <% accounts.each do |account| %>
+          <li>
+            <%= link_to account, class: "flex items-center gap-2 px-3 py-1 text-[13px] hover:bg-mint-page/70" do %>
+              <span class="min-w-0 flex-1 truncate"><%= account.name %></span>
+              <%= amount_tag account.balance %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+<% end %>

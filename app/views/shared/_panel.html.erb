@@ -1,0 +1,13 @@
+<%# locals: (title: nil, meta: nil, css: nil, element: :section) -%>
+<%# The dense panel used across the app. `meta` is shown at the right of the header (a link, date, total...). -%>
+<%= content_tag element, class: [ "panel", css ] do %>
+  <% if title %>
+    <div class="panel-header">
+      <h2 class="panel-title"><%= title %></h2>
+      <% if meta %>
+        <div class="text-xs text-mint-muted"><%= meta %></div>
+      <% end %>
+    </div>
+  <% end %>
+  <%= yield %>
+<% end %>

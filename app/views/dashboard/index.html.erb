@@ -1,0 +1,23 @@
+<% content_for :title, "Overview" %>
+
+<% if @accounts.any? %>
+  <div class="grid gap-5 lg:grid-cols-[16rem_1fr]">
+    <%= render "accounts_sidebar", account_groups: @account_groups %>
+
+    <div class="min-w-0 space-y-5">
+      <%= render "summary", cash_total: @cash_total, credit_card_debt: @credit_card_debt, net_worth: @net_worth %>
+
+      <div class="grid gap-5 xl:grid-cols-[1fr_15rem]">
+        <%= render "recent_transactions", transactions: @recent_transactions %>
+        <%= render "spending", month: @spending_month, spending_by_category: @spending_by_category %>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <%= render layout: "shared/card" do %>
+    <%= render "shared/empty_state", title: "Let's get you set up",
+      message: "Add a chequing, savings or credit card account to start tracking transactions." do %>
+      <%= link_to "Add your first account", new_account_path, class: "btn btn-primary" %>
+    <% end %>
+  <% end %>
+<% end %>

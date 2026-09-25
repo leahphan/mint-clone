@@ -1,0 +1,9 @@
+<% content_for :title, "Edit account" %>
+
+<div class="mx-auto max-w-xl">
+  <%= render "shared/page_header", title: "Edit account", subtitle: @account.name %>
+
+  <%= render layout: "shared/panel", locals: { title: "Account details" } do %>
+    <%= render "form", account: @account, submit_label: "Save changes", cancel_path: account_path(@account) %>
+  <% end %>
+</div>

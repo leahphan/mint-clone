@@ -3,7 +3,8 @@
     <%= link_to app_name.downcase, root_path, class: "text-2xl font-black tracking-tight text-mint-green" %>
 
     <nav class="flex h-full gap-6">
-      <%= nav_link "Overview", accounts_path, active: controller_name.in?(%w[accounts transactions imports]) %>
+      <%= nav_link "Overview", root_path, active: controller_name == "dashboard" %>
+      <%= nav_link "Accounts", accounts_path, active: controller_name.in?(%w[accounts transactions imports]) %>
       <%= nav_link "Categories", categories_path %>
     </nav>
   </div>

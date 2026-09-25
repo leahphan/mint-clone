@@ -17,7 +17,7 @@ class ImportsTest < ActionDispatch::IntegrationTest
     assert_redirected_to account_path(@account)
     follow_redirect!
     assert_select "p", text: "Imported 2 transactions from september.csv."
-    assert_equal [ "Payroll", "Loblaws" ], css_select("tbody tr td:nth-child(2)").map(&:text)
+    assert_equal [ "Payroll", "Loblaws", "Opening balance" ], css_select("tbody tr td:nth-child(2)").map(&:text)
     assert_select "td", text: "-$54.32"
   end
 

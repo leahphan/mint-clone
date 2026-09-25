@@ -25,9 +25,10 @@ A personal finance web app inspired by Mint.com. Rails 8.1 monolith on PostgreSQ
 - Visual reference: Mint.com circa Nov 2017 (white top bar, DM Sans with light body/heavy headings, green `#00c96d`, blue `#30c0e3`, orange `#fd8a10` CTAs, white cards on `#f4f4f4`). Use our own wordmark (`config.x.app_name`), never Intuit/Mint logos or artwork.
 - Reuse before adding:
   - Colors and fonts are tokens in `@theme` in `app/assets/tailwind/application.css` (`bg-mint-green`, `text-mint-muted`, …); no raw hex values in views.
-  - Repeated primitives are component classes in the same file: `btn` + `btn-primary`/`btn-secondary`, `btn-link`, `card`/`card-header`/`card-title`, `form-label`/`form-input`/`form-hint`, `data-table`, `status-dot`. Everything else is utility classes in the markup.
-  - Shared markup is partials in `app/views/shared/` (`navbar`, `hero`, `flash`, `page_header`, `card` via `render layout:`, `form_errors`, `empty_state`); formatting goes in `ApplicationHelper` (`amount_tag`, `short_date`, `nav_link`, `status_dot`).
-- Account balances shown in the UI are placeholders (`placeholder_balance`) until real balances are built.
+  - Repeated primitives are component classes in the same file: `btn` + `btn-primary`/`btn-secondary`, `btn-link`, `panel`/`panel-header`/`panel-title`/`panel-body`/`panel-list`/`panel-empty`, `stat-strip` (with `panel`), `form-label`/`form-input`/`form-hint`, `data-table` (+ `data-table-compact`), and the older roomier `card`/`card-header`/`card-title`. Everything else is utility classes in the markup.
+  - Shared markup is partials in `app/views/shared/`: `navbar`, `flash`, `page_header`, `form_errors`, `empty_state`, and the block partials used with `render layout:` — `panel` (title, meta, css, element), `stat` (label; block is the value), `card`. Formatting goes in `ApplicationHelper` (`amount_tag`, `short_date`, `nav_link`).
+- Default style is dense, like the dashboard: `panel` + `data-table-compact` for lists and tables, `stat-strip` for headline figures. The transaction and import forms still use the roomier `card`.
+- The dashboard (`DashboardController#index`, the root) owns all cross-account queries. Account, transaction, category, and import pages only load their own records. An account's balance is the sum of its transactions: use `Account.with_balances` when listing accounts, not `account.balance` in a loop.
 
 ## Environment
 

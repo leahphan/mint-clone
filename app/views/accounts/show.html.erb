@@ -1,57 +1,53 @@
 <% content_for :title, @account.name %>
 
-<div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-  <%= render "sidebar", accounts: @sidebar_accounts, current: @account %>
+<%= render "shared/page_header", title: @account.name, subtitle: @account.account_type.humanize do %>
+  <%= link_to "Edit", edit_account_path(@account), class: "btn btn-secondary" %>
+  <%= link_to "Import CSV", new_account_import_path(@account), class: "btn btn-secondary" %>
+  <%= link_to "Add transaction", new_account_transaction_path(@account), class: "btn btn-primary" %>
+<% end %>
 
-  <div>
-    <%= render "shared/page_header", title: @account.name, subtitle: @account.account_type.humanize do %>
-      <%= link_to "Import CSV", new_account_import_path(@account), class: "btn btn-secondary" %>
-      <%= link_to "Add transaction", new_account_transaction_path(@account), class: "btn btn-primary" %>
+<div class="space-y-5">
+  <section class="panel stat-strip max-w-md sm:grid-cols-2" aria-label="Account summary">
+    <%= render layout: "shared/stat", locals: { label: "Balance" } do %>
+      <%= amount_tag @account.balance %>
     <% end %>
+    <%= render layout: "shared/stat", locals: { label: "Transactions" } do %>
+      <span class="font-semibold tabular-nums"><%= @transactions.size %></span>
+    <% end %>
+  </section>
 
-    <div class="card mb-6 flex flex-wrap items-end gap-8 px-5 py-4">
-      <div>
-        <p class="form-label">Balance</p>
-        <%= amount_tag placeholder_balance(@account), size: :hero %>
-      </div>
-      <div>
-        <p class="form-label">Transactions</p>
-        <p class="text-4xl font-light tracking-tight tabular-nums"><%= @transactions.size %></p>
-      </div>
+  <%= render layout: "shared/panel", locals: { title: "Transactions" } do %>
+    <div class="overflow-x-auto">
+      <table class="data-table data-table-compact">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th class="text-right">Amount</th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @transactions.each do |transaction| %>
+            <tr>
+              <td class="whitespace-nowrap text-mint-muted"><%= short_date transaction.transaction_date %></td>
+              <td class="font-semibold"><span class="block max-w-96 truncate" title="<%= transaction.description %>"><%= transaction.description %></span></td>
+              <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-48 truncate"><%= transaction.category&.name || "Uncategorized" %></span></td>
+              <td class="text-right"><%= amount_tag transaction.amount %></td>
+              <td class="text-right"><%= link_to "Edit", edit_account_transaction_path(@account, transaction), class: "btn-link" %></td>
+            </tr>
+          <% end %>
+          <%# The opening balance comes before every transaction, so it's the last row when newest first. -%>
+          <tr>
+            <td></td>
+            <td class="font-semibold">Opening balance</td>
+            <td></td>
+            <td class="text-right"><%= amount_tag @account.opening_balance %></td>
+            <td class="text-right"><%= link_to "Edit", edit_account_path(@account), class: "btn-link" %></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-
-    <%= render layout: "shared/card", locals: { title: "Transactions" } do %>
-      <% if @transactions.any? %>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th class="text-right">Amount</th>
-                <th><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @transactions.each do |transaction| %>
-                <tr>
-                  <td class="whitespace-nowrap text-mint-muted"><%= short_date transaction.transaction_date %></td>
-                  <td class="font-semibold"><%= transaction.description %></td>
-                  <td class="<%= "text-mint-faint" unless transaction.category %>"><%= transaction.category&.name || "Uncategorized" %></td>
-                  <td class="text-right"><%= amount_tag transaction.amount %></td>
-                  <td class="text-right"><%= link_to "Edit", edit_account_transaction_path(@account, transaction), class: "btn-link" %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <%= render "shared/empty_state", title: "No transactions yet",
-          message: "Add one by hand or import a CSV file." do %>
-          <%= link_to "Add transaction", new_account_transaction_path(@account), class: "btn btn-primary" %>
-        <% end %>
-      <% end %>
-    <% end %>
-  </div>
+  <% end %>
 </div>

@@ -23,7 +23,6 @@
   --color-mint-muted: #777777;
   --color-mint-faint: #999999;
   --color-mint-line: #dddddd;
-  --color-mint-hero: #1f2a30;
 }
 
 @layer base {
@@ -101,7 +100,51 @@
     }
   }
 
-  .status-dot {
-    @apply inline-block size-2.5 shrink-0 rounded-full;
+  /* Denser variant for dashboards: class="data-table data-table-compact". */
+  .data-table-compact {
+    @apply text-[13px];
+
+    & th {
+      @apply px-3 py-2 text-[11px];
+    }
+
+    & td {
+      @apply px-3 py-1.5 align-middle;
+    }
+  }
+
+  /* A flatter, tighter alternative to .card for information-dense screens. */
+  .panel {
+    @apply rounded-[2px] border border-mint-line bg-white;
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between gap-3 border-b border-mint-line bg-mint-page/50 px-3 py-2;
+  }
+
+  .panel-title {
+    @apply text-xs font-extrabold tracking-wide text-mint-ink uppercase;
+  }
+
+  .panel-body {
+    @apply p-4;
+  }
+
+  /* Compact rows inside a panel: <ul class="panel-list"><li>label … value</li></ul> */
+  .panel-list {
+    @apply divide-y divide-mint-line/60 text-[13px];
+
+    & > li {
+      @apply flex items-center justify-between gap-3 px-3 py-1.5;
+    }
+  }
+
+  .panel-empty {
+    @apply px-3 py-4 text-[13px] text-mint-muted;
+  }
+
+  /* A row of label/value cells, e.g. Cash | Credit card debt | Net worth: class="panel stat-strip sm:grid-cols-3". */
+  .stat-strip {
+    @apply grid divide-y divide-mint-line sm:divide-x sm:divide-y-0;
   }
 }

@@ -1,0 +1,19 @@
+<%# locals: (month:, spending_by_category:) -%>
+<%= render layout: "shared/panel", locals: { title: "Spending", meta: month.strftime("%B %Y"), css: "self-start" } do %>
+  <% if spending_by_category.any? %>
+    <ul class="panel-list">
+      <% spending_by_category.each do |category, total| %>
+        <li>
+          <span class="<%= "text-mint-faint" if category == "Uncategorized" %> truncate"><%= category %></span>
+          <span class="font-semibold tabular-nums"><%= number_to_currency total %></span>
+        </li>
+      <% end %>
+    </ul>
+    <div class="flex items-center justify-between gap-3 border-t border-mint-line px-3 py-2 text-[13px] font-bold">
+      <span>Total</span>
+      <span class="tabular-nums"><%= number_to_currency spending_by_category.sum { |_category, total| total } %></span>
+    </div>
+  <% else %>
+    <p class="panel-empty">No spending this month.</p>
+  <% end %>
+<% end %>

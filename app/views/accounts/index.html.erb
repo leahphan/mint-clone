@@ -1,44 +1,39 @@
-<% content_for :title, "Overview" %>
+<% content_for :title, "Accounts" %>
 
-<% content_for :hero do %>
-  <%= render "shared/hero", title: "It's all coming together.",
-    subtitle: "Your accounts, transactions and categories, all in one place." do %>
-    <% if @accounts.any? %>
-      <div class="mt-6">
-        <p class="text-xs font-bold tracking-wide text-white/70 uppercase">Net total</p>
-        <p class="mt-1 text-5xl font-light tracking-tight tabular-nums"><%= number_to_currency @accounts.sum { |account| placeholder_balance(account) } %></p>
-      </div>
-    <% end %>
-  <% end %>
+<%= render "shared/page_header", title: "Accounts" do %>
+  <%= link_to "Add account", new_account_path, class: "btn btn-primary" %>
 <% end %>
 
 <% if @accounts.any? %>
-  <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-    <%= render "sidebar", accounts: @accounts %>
-
-    <div class="space-y-6">
-      <% @accounts.grouped.each do |group, group_accounts| %>
-        <%= render layout: "shared/card", locals: { title: group } do %>
-          <ul class="divide-y divide-mint-line/60">
-            <% group_accounts.each do |account| %>
-              <li class="flex flex-wrap items-center gap-4 px-5 py-4">
-                <%= status_dot placeholder_balance(account) %>
-                <div class="min-w-0 flex-1">
-                  <%= link_to account.name, account, class: "font-extrabold hover:text-mint-blue-dark" %>
-                  <p class="text-xs text-mint-faint"><%= account.account_type.humanize %></p>
-                </div>
-                <%= amount_tag placeholder_balance(account), size: :hero %>
-                <%= link_to "View transactions", account, class: "btn-link text-sm" %>
-              </li>
-            <% end %>
-          </ul>
-        <% end %>
+  <div class="space-y-5">
+    <% Account.grouped(@accounts).each do |group, group_accounts| %>
+      <%= render layout: "shared/panel", locals: { title: group, meta: amount_tag(group_accounts.sum(0, &:balance)) } do %>
+        <div class="overflow-x-auto">
+          <table class="data-table data-table-compact">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th class="w-40">Type</th>
+                <th class="w-36 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% group_accounts.each do |account| %>
+                <tr>
+                  <td><%= link_to account.name, account, class: "btn-link block max-w-80 truncate" %></td>
+                  <td class="whitespace-nowrap text-mint-muted"><%= account.account_type.humanize %></td>
+                  <td class="text-right"><%= amount_tag account.balance %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
       <% end %>
-    </div>
+    <% end %>
   </div>
 <% else %>
-  <%= render layout: "shared/card" do %>
-    <%= render "shared/empty_state", title: "Let's get you set up",
+  <%= render layout: "shared/panel" do %>
+    <%= render "shared/empty_state", title: "No accounts yet",
       message: "Add a chequing, savings or credit card account to start tracking transactions." do %>
       <%= link_to "Add your first account", new_account_path, class: "btn btn-primary" %>
     <% end %>

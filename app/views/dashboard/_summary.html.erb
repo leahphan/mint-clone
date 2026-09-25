@@ -1,0 +1,12 @@
+<%# locals: (cash_total:, credit_card_debt:, net_worth:) -%>
+<section class="panel stat-strip sm:grid-cols-3" aria-label="Financial summary">
+  <%= render layout: "shared/stat", locals: { label: "Cash" } do %>
+    <%= amount_tag cash_total %>
+  <% end %>
+  <%= render layout: "shared/stat", locals: { label: "Credit card debt" } do %>
+    <span class="<%= credit_card_debt.positive? ? "text-mint-negative" : "text-mint-ink" %> font-semibold tabular-nums"><%= number_to_currency credit_card_debt %></span>
+  <% end %>
+  <%= render layout: "shared/stat", locals: { label: "Net worth" } do %>
+    <%= amount_tag net_worth %>
+  <% end %>
+</section>

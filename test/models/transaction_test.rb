@@ -41,4 +41,25 @@ class TransactionTest < ActiveSupport::TestCase
 
     assert_equal [ newer, older ], account.transactions.newest_first.to_a
   end
+
+  test "spending_by_category totals this month's money out per category, largest first" do
+    travel_to Date.new(2026, 9, 25) do
+      groceries = create(:category, name: "Groceries")
+      dining = create(:category, name: "Dining")
+      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 1), amount: "-54.32")
+      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 30), amount: "-45.68")
+      create(:transaction, category: dining, transaction_date: Date.new(2026, 9, 10), amount: "-30.00")
+      create(:transaction, category: nil, transaction_date: Date.new(2026, 9, 12), amount: "-12.50")
+
+      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 15), amount: "20.00") # refund: not spending
+      create(:transaction, category: groceries, transaction_date: Date.new(2026, 8, 31), amount: "-999.00") # last month
+      create(:transaction, category: groceries, transaction_date: Date.new(2026, 10, 1), amount: "-999.00") # next month
+
+      assert_equal [
+        [ "Groceries", BigDecimal("100.00") ],
+        [ "Dining", BigDecimal("30.00") ],
+        [ "Uncategorized", BigDecimal("12.50") ]
+      ], Transaction.spending_by_category(Date.current)
+    end
+  end
 end

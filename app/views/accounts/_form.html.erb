@@ -1,0 +1,25 @@
+<%# locals: (account:, submit_label:, cancel_path:) -%>
+<%= form_with model: account, class: "panel-body space-y-4" do |form| %>
+  <%= render "shared/form_errors", record: account %>
+
+  <div>
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-input", placeholder: "e.g. Everyday Chequing" %>
+  </div>
+
+  <div>
+    <%= form.label :account_type, class: "form-label" %>
+    <%= form.select :account_type, Account.account_types.keys.map { |type| [ type.humanize, type ] }, { include_blank: true }, class: "form-input" %>
+  </div>
+
+  <div>
+    <%= form.label :opening_balance, class: "form-label" %>
+    <%= form.number_field :opening_balance, step: "0.01", class: "form-input" %>
+    <p class="form-hint">The balance before your first transaction. Negative for money owed, e.g. a credit card balance.</p>
+  </div>
+
+  <div class="flex items-center justify-between gap-4 pt-1">
+    <%= link_to "Cancel", cancel_path, class: "btn-link text-sm" %>
+    <%= form.submit submit_label, class: "btn btn-primary" %>
+  </div>
+<% end %>

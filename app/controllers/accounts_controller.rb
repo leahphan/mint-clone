@@ -1,8 +1,6 @@
 class AccountsController < ApplicationController
-  before_action :load_sidebar_accounts, only: %i[show]
-
   def index
-    @accounts = Account.order(:name)
+    @accounts = Account.with_balances.order(:name).to_a
   end
 
   def show
@@ -24,12 +22,22 @@ class AccountsController < ApplicationController
     end
   end
 
-  private
-    def load_sidebar_accounts
-      @sidebar_accounts = Account.order(:name)
-    end
+  def edit
+    @account = Account.find(params[:id])
+  end
 
+  def update
+    @account = Account.find(params[:id])
+
+    if @account.update(account_params)
+      redirect_to @account, notice: "Account updated."
+    else
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
+  private
     def account_params
-      params.expect(account: [ :name, :account_type ])
+      params.expect(account: [ :name, :account_type, :opening_balance ])
     end
 end
