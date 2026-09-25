@@ -3,7 +3,8 @@
 <h1><%= @account.name %></h1>
 <p><%= @account.account_type.humanize %></p>
 
-<%= link_to "Add transaction", new_account_transaction_path(@account) %>
+<%= link_to "Add transaction", new_account_transaction_path(@account) %> |
+<%= link_to "Import CSV", new_account_import_path(@account) %>
 
 <% if @transactions.any? %>
   <table>

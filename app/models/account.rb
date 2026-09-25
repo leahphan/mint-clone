@@ -1,5 +1,6 @@
 class Account < ApplicationRecord
   has_many :transactions, dependent: :destroy
+  has_many :imports, dependent: :destroy
 
   enum :account_type, {
     chequing: "chequing",

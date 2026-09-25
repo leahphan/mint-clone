@@ -10,10 +10,12 @@ A personal finance web app inspired by Mint.com. Rails 8.1 monolith on PostgreSQ
 
 - Conventional Rails architecture; prefer standard Rails features over custom abstractions.
 - Keep implementations simple.
+- Keep models to associations, validations, and small queries. Put multi-step operations (e.g. CSV import) in plain service objects in `app/services/` with a `.call(...)` class method, tested in `test/services/`.
 - Don't add gems without a clear reason.
 - Don't modify unrelated code.
 - Write tests for meaningful behavior, and run the relevant tests after making changes.
 - Use FactoryBot factories (`test/factories/`) for test data, not YAML fixtures. Each test creates the records it needs with `create`/`build`.
+- Stay on Minitest (not RSpec). Stub sparingly with `minitest-mock` (`object.stub(:method, value) { ... }`), only at boundaries a test can't easily control, such as time, the network, or race windows. Prefer real records over mocking our own models.
 - Keep explanations concise.
 - The user is the primary Git author. Commit as them and include Claude as a `Co-Authored-By:` trailer.
 

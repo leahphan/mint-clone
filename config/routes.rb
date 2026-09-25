@@ -14,6 +14,7 @@ Rails.application.routes.draw do
 
   resources :accounts, only: %i[index show new create] do
     resources :transactions, only: %i[new create edit update]
+    resources :imports, only: %i[new create]
   end
 
   resources :categories, only: %i[index create]

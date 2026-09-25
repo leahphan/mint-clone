@@ -1,6 +1,7 @@
 class Transaction < ApplicationRecord
   belongs_to :account
   belongs_to :category, optional: true
+  belongs_to :import, optional: true
 
   validates :transaction_date, :description, presence: true
   validates :amount, presence: true, numericality: true
