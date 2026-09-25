@@ -1,0 +1,10 @@
+<%# locals: (record:) -%>
+<% if record.errors.any? %>
+  <div class="mb-5 rounded-[2px] border-l-4 border-mint-negative bg-mint-negative-light px-4 py-3 text-sm font-normal" role="alert">
+    <ul class="list-disc space-y-1 pl-4">
+      <% record.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

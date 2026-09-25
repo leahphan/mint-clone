@@ -1,0 +1,8 @@
+<%# locals: (title:, message: nil) -%>
+<div class="px-6 py-12 text-center">
+  <p class="text-lg font-extrabold"><%= title %></p>
+  <% if message %>
+    <p class="mt-1 text-sm text-mint-muted"><%= message %></p>
+  <% end %>
+  <div class="mt-5"><%= yield %></div>
+</div>

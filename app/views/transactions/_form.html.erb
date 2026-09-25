@@ -1,32 +1,31 @@
-<%= form_with model: [ @account, transaction ] do |form| %>
-  <% if transaction.errors.any? %>
-    <ul>
-      <% transaction.errors.full_messages.each do |message| %>
-        <li><%= message %></li>
-      <% end %>
-    </ul>
-  <% end %>
+<%= form_with model: [ @account, transaction ], class: "space-y-5 p-5" do |form| %>
+  <%= render "shared/form_errors", record: transaction %>
 
-  <div>
-    <%= form.label :transaction_date, "Date" %>
-    <%= form.date_field :transaction_date %>
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div>
+      <%= form.label :transaction_date, "Date", class: "form-label" %>
+      <%= form.date_field :transaction_date, class: "form-input" %>
+    </div>
+
+    <div>
+      <%= form.label :amount, class: "form-label" %>
+      <%= form.number_field :amount, step: "0.01", class: "form-input", placeholder: "-54.32" %>
+      <p class="form-hint">Negative for money out, positive for money in.</p>
+    </div>
   </div>
 
   <div>
-    <%= form.label :description %>
-    <%= form.text_field :description %>
+    <%= form.label :description, class: "form-label" %>
+    <%= form.text_field :description, class: "form-input", placeholder: "e.g. Loblaws" %>
   </div>
 
   <div>
-    <%= form.label :amount %>
-    <%= form.number_field :amount, step: "0.01" %>
-    <small>Negative for money out, positive for money in.</small>
+    <%= form.label :category_id, "Category", class: "form-label" %>
+    <%= form.collection_select :category_id, Category.order(:name), :id, :name, { include_blank: "Uncategorized" }, class: "form-input" %>
   </div>
 
-  <div>
-    <%= form.label :category_id, "Category" %>
-    <%= form.collection_select :category_id, Category.order(:name), :id, :name, include_blank: "Uncategorized" %>
+  <div class="flex items-center justify-between gap-4 pt-2">
+    <%= link_to "Cancel", @account, class: "btn-link text-sm" %>
+    <%= form.submit transaction.new_record? ? "Add transaction" : "Update transaction", class: "btn btn-primary" %>
   </div>
-
-  <%= form.submit transaction.new_record? ? "Add transaction" : "Update transaction" %>
 <% end %>

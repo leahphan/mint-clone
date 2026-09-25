@@ -1,7 +1,9 @@
 <% content_for :title, "New transaction" %>
 
-<h1>New transaction for <%= @account.name %></h1>
+<div class="mx-auto max-w-2xl">
+  <%= render "shared/page_header", title: "Add a transaction", subtitle: @account.name %>
 
-<%= render "form", transaction: @transaction %>
-
-<%= link_to "Back to #{@account.name}", @account %>
+  <%= render layout: "shared/card" do %>
+    <%= render "form", transaction: @transaction %>
+  <% end %>
+</div>

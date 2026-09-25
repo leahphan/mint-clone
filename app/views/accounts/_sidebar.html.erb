@@ -1,0 +1,35 @@
+<%# locals: (accounts:, current: nil) -%>
+<aside class="card self-start">
+  <div class="card-header">
+    <h2 class="card-title">Accounts</h2>
+    <%= link_to "+ Add", new_account_path, class: "btn-link text-sm" %>
+  </div>
+
+  <% if accounts.any? %>
+    <% accounts.grouped.each do |group, group_accounts| %>
+      <div class="border-b border-mint-line last:border-b-0">
+        <div class="flex items-center justify-between bg-mint-page/70 px-5 py-2">
+          <h3 class="text-xs font-bold tracking-wide text-mint-muted uppercase"><%= group %></h3>
+          <%= amount_tag group_accounts.sum { |account| placeholder_balance(account) } %>
+        </div>
+
+        <ul>
+          <% group_accounts.each do |account| %>
+            <li>
+              <%= link_to account, class: "flex items-center gap-3 border-l-4 px-4 py-3 text-sm transition-colors #{account == current ? "border-mint-green bg-mint-green-light" : "border-transparent hover:bg-mint-page/60"}" do %>
+                <%= status_dot placeholder_balance(account) %>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate font-semibold"><%= account.name %></span>
+                  <span class="block text-xs text-mint-faint"><%= account.account_type.humanize %></span>
+                </span>
+                <%= amount_tag placeholder_balance(account) %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  <% else %>
+    <p class="px-5 py-6 text-sm text-mint-muted">No accounts yet.</p>
+  <% end %>
+</aside>

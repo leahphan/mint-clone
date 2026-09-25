@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/*
+  Design tokens, modelled on mint.com circa Nov 2017.
+  Views use these tokens (bg-mint-green, text-mint-muted, ...) and never raw hex values.
+*/
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+
+  --color-mint-green: #00c96d;
+  --color-mint-green-dark: #00a95b;
+  --color-mint-green-light: #e6f9f0;
+  --color-mint-blue: #30c0e3;
+  --color-mint-blue-dark: #1ba4c5;
+  --color-mint-orange: #fd8a10;
+  --color-mint-orange-dark: #d87002;
+  --color-mint-negative: #e0434b;
+  --color-mint-negative-light: #fdecec;
+  --color-mint-warning: #f5b700;
+
+  --color-mint-page: #f4f4f4;
+  --color-mint-ink: #333333;
+  --color-mint-muted: #777777;
+  --color-mint-faint: #999999;
+  --color-mint-line: #dddddd;
+  --color-mint-hero: #1f2a30;
+}
+
+@layer base {
+  body {
+    @apply bg-mint-page font-sans font-light text-mint-ink antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-extrabold text-mint-ink;
+  }
+}
+
+/*
+  Only primitives that repeat across pages live here; everything else stays as utilities in the markup.
+  Buttons combine a base and a variant: class="btn btn-primary".
+*/
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[2px] px-4 py-2 text-sm font-extrabold whitespace-nowrap text-white transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-mint-orange hover:bg-mint-orange-dark active:bg-mint-orange-dark;
+  }
+
+  .btn-secondary {
+    @apply bg-mint-blue hover:bg-mint-blue-dark active:bg-mint-blue-dark;
+  }
+
+  .btn-link {
+    @apply font-semibold text-mint-blue-dark hover:text-mint-blue hover:underline;
+  }
+
+  .card {
+    @apply rounded-[2px] border border-mint-line bg-white shadow-sm;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between gap-4 border-b border-mint-line px-5 py-4;
+  }
+
+  .card-title {
+    @apply text-base font-extrabold text-mint-ink;
+  }
+
+  .form-label {
+    @apply mb-1 block text-xs font-bold tracking-wide text-mint-muted uppercase;
+  }
+
+  .form-input {
+    @apply block w-full rounded-[2px] border border-mint-line bg-white px-3 py-2 text-sm font-normal text-mint-ink focus:border-mint-blue focus:ring-2 focus:ring-mint-blue/30 focus:outline-none;
+  }
+
+  .form-hint {
+    @apply mt-1 text-xs text-mint-faint;
+  }
+
+  .data-table {
+    @apply w-full text-left text-sm;
+
+    & th {
+      @apply border-b border-mint-line px-5 py-3 text-xs font-bold tracking-wide text-mint-muted uppercase;
+    }
+
+    & td {
+      @apply border-b border-mint-line/60 px-5 py-3 align-top;
+    }
+
+    & tbody tr:last-child td {
+      @apply border-b-0;
+    }
+
+    & tbody tr:hover {
+      @apply bg-mint-page/60;
+    }
+  }
+
+  .status-dot {
+    @apply inline-block size-2.5 shrink-0 rounded-full;
+  }
+}

@@ -1,15 +1,46 @@
-<% content_for :title, "Accounts" %>
+<% content_for :title, "Overview" %>
 
-<h1>Accounts</h1>
-
-<% if @accounts.any? %>
-  <ul>
-    <% @accounts.each do |account| %>
-      <li><%= link_to account.name, account %> (<%= account.account_type.humanize %>)</li>
+<% content_for :hero do %>
+  <%= render "shared/hero", title: "It's all coming together.",
+    subtitle: "Your accounts, transactions and categories, all in one place." do %>
+    <% if @accounts.any? %>
+      <div class="mt-6">
+        <p class="text-xs font-bold tracking-wide text-white/70 uppercase">Net total</p>
+        <p class="mt-1 text-5xl font-light tracking-tight tabular-nums"><%= number_to_currency @accounts.sum { |account| placeholder_balance(account) } %></p>
+      </div>
     <% end %>
-  </ul>
-<% else %>
-  <p>No accounts yet.</p>
+  <% end %>
 <% end %>
 
-<%= link_to "New account", new_account_path %>
+<% if @accounts.any? %>
+  <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
+    <%= render "sidebar", accounts: @sidebar_accounts %>
+
+    <div class="space-y-6">
+      <% @accounts.grouped.each do |group, group_accounts| %>
+        <%= render layout: "shared/card", locals: { title: group } do %>
+          <ul class="divide-y divide-mint-line/60">
+            <% group_accounts.each do |account| %>
+              <li class="flex flex-wrap items-center gap-4 px-5 py-4">
+                <%= status_dot placeholder_balance(account) %>
+                <div class="min-w-0 flex-1">
+                  <%= link_to account.name, account, class: "font-extrabold hover:text-mint-blue-dark" %>
+                  <p class="text-xs text-mint-faint"><%= account.account_type.humanize %></p>
+                </div>
+                <%= amount_tag placeholder_balance(account), size: :hero %>
+                <%= link_to "View transactions", account, class: "btn-link text-sm" %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <%= render layout: "shared/card" do %>
+    <%= render "shared/empty_state", title: "Let's get you set up",
+      message: "Add a chequing, savings or credit card account to start tracking transactions." do %>
+      <%= link_to "Add your first account", new_account_path, class: "btn btn-primary" %>
+    <% end %>
+  <% end %>
+<% end %>

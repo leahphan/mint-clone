@@ -23,5 +23,8 @@ module Mint
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # The name shown in the header wordmark and page titles.
+    config.x.app_name = "Sprout"
   end
 end

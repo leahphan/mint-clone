@@ -1,4 +1,6 @@
 class AccountsController < ApplicationController
+  before_action :load_sidebar_accounts, only: %i[show]
+
   def index
     @accounts = Account.order(:name)
   end
@@ -23,6 +25,10 @@ class AccountsController < ApplicationController
   end
 
   private
+    def load_sidebar_accounts
+      @sidebar_accounts = Account.order(:name)
+    end
+
     def account_params
       params.expect(account: [ :name, :account_type ])
     end

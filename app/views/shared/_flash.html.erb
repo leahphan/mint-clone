@@ -1,0 +1,8 @@
+<% { notice: "border-mint-green bg-mint-green-light", alert: "border-mint-negative bg-mint-negative-light" }.each do |type, classes| %>
+  <% if flash[type] %>
+    <div data-controller="dismiss" class="mb-6 flex items-center justify-between gap-4 rounded-[2px] border-l-4 px-4 py-3 text-sm font-normal <%= classes %>" role="status">
+      <p><%= flash[type] %></p>
+      <button type="button" data-action="dismiss#close" class="cursor-pointer text-lg leading-none text-mint-muted hover:text-mint-ink" aria-label="Dismiss">&times;</button>
+    </div>
+  <% end %>
+<% end %>

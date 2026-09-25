@@ -1,0 +1,12 @@
+<%# locals: (title:, subtitle: nil) -%>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-black tracking-tight"><%= title %></h1>
+    <% if subtitle %>
+      <p class="mt-1 text-sm text-mint-muted"><%= subtitle %></p>
+    <% end %>
+  </div>
+  <div class="flex flex-wrap items-center gap-3">
+    <%= yield %>
+  </div>
+</div>
