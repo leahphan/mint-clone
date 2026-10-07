@@ -16,9 +16,11 @@ class BudgetsController < ApplicationController
     if @budget.save
       redirect_to budgets_path, notice: "Budget created."
     else
-      @categories = unbudgeted_categories
-      render :new, status: :unprocessable_entity
+      render_new
     end
+  rescue ActiveRecord::RecordNotUnique
+    @budget.errors.add(:category_id, :taken)
+    render_new
   end
 
   def edit
@@ -40,6 +42,11 @@ class BudgetsController < ApplicationController
   private
     def set_budget
       @budget = Budget.find(params[:id])
+    end
+
+    def render_new
+      @categories = unbudgeted_categories
+      render :new, status: :unprocessable_entity
     end
 
     def unbudgeted_categories

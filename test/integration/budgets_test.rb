@@ -29,6 +29,23 @@ class BudgetsTest < ActionDispatch::IntegrationTest
     assert_select "select[name=?] option", "budget[category_id]", text: "Groceries (expense)"
   end
 
+  test "shows an error when a budget for the category is created concurrently" do
+    groceries = create(:category, name: "Groceries")
+    create(:budget, category: groceries)
+    create(:category, name: "Dining")
+    racing =Budget.new(category: groceries, amount: "450.00")
+
+    racing.stub(:valid?, true) do
+      Budget.stub(:new, racing) do
+        assert_no_difference "Budget.count" do
+          post budgets_path, params: { budget: { category_id: groceries.id, amount: "450.00" } }
+        end
+      end
+    end
+    assert_response :unprocessable_entity
+    assert_select "body", text: /has already been taken/
+  end
+
   test "new budget form only offers categories without a budget" do
     create(:budget, category: create(:category, name: "Groceries"))
     create(:category, name: "Dining")

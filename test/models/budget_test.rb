@@ -8,6 +8,11 @@ class BudgetTest < ActiveSupport::TestCase
     assert_not build(:budget, amount: nil).valid?
   end
 
+  test "database rejects a non-positive amount" do
+    budget = create(:budget)
+    assert_raises(ActiveRecord::CheckViolation) { budget.update_column(:amount, 0) }
+  end
+
   test "one budget per category" do
     budget = create(:budget)
     duplicate = build(:budget, category: budget.category)
