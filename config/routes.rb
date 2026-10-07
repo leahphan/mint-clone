@@ -17,5 +17,6 @@ Rails.application.routes.draw do
     resources :imports, only: %i[new create]
   end
 
-  resources :categories, only: %i[index create]
+  resources :categories, only: %i[index create edit update]
+  resources :budgets, except: :show
 end

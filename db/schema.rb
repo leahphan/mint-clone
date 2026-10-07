@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_203049) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_213013) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,10 +22,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_203049) do
     t.decimal "opening_balance", precision: 12, scale: 2, default: "0.0", null: false
   end
 
+  create_table "budgets", force: :cascade do |t|
+    t.bigint "category_id", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_budgets_on_category_id", unique: true
+  end
+
   create_table "categories", force: :cascade do |t|
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "category_type", null: false
     t.index "lower((name)::text)", name: "index_categories_on_lower_name", unique: true
   end
 
@@ -53,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_203049) do
     t.index ["import_id"], name: "index_transactions_on_import_id"
   end
 
+  add_foreign_key "budgets", "categories"
   add_foreign_key "imports", "accounts"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"

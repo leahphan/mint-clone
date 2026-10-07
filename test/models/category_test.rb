@@ -18,4 +18,11 @@ class CategoryTest < ActiveSupport::TestCase
     assert_not duplicate.valid?
     assert_includes duplicate.errors[:name], "has already been taken"
   end
+
+  test "requires an expense or income category_type" do
+    assert build(:category, category_type: "expense").valid?
+    assert build(:category, :income).income?
+    assert_not build(:category, category_type: nil).valid?
+    assert_not build(:category, category_type: "transfer").valid?
+  end
 end

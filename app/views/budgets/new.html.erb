@@ -1,0 +1,16 @@
+<% content_for :title, "New budget" %>
+
+<div class="mx-auto max-w-xl">
+  <%= render "shared/page_header", title: "Add a budget" %>
+
+  <%= render layout: "shared/panel", locals: { title: "Budget details" } do %>
+    <% if @categories.any? %>
+      <%= render "form", budget: @budget, categories: @categories, submit_label: "Create budget" %>
+    <% else %>
+      <%= render "shared/empty_state", title: "Every category has a budget",
+        message: "Add a new category to budget for it." do %>
+        <%= link_to "Go to categories", categories_path, class: "btn btn-primary" %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

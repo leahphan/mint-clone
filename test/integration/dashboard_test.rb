@@ -65,13 +65,56 @@ class DashboardTest < ActionDispatch::IntegrationTest
     assert_includes summary, "Net worth $379.50"
   end
 
+  test "shows this month's progress for income and expense budgets" do
+    travel_to Date.new(2026, 9, 25) do
+      groceries = create(:category, name: "Groceries")
+      dining = create(:category, name: "Dining")
+      paycheque = create(:category, :income, name: "Paycheque")
+      freelance = create(:category, :income, name: "Freelance")
+      create(:budget, category: groceries, amount: "100.00")
+      create(:budget, category: dining, amount: "40.00")
+      create(:budget, category: paycheque, amount: "3000.00")
+      create(:budget, category: freelance, amount: "500.00")
+      create(:transaction, category: groceries, amount: "-100.00")
+      create(:transaction, category: groceries, amount: "25.00") # refund
+      create(:transaction, category: dining, amount: "-52.00")
+      create(:transaction, category: paycheque, amount: "1200.00")
+      create(:transaction, category: freelance, amount: "650.00")
+
+      get root_path
+
+      panel = css_select("section").find { |section| section.at_css("h2")&.text == "Budgets" }
+      text = panel.text.squish
+      assert_match(/Income .*Freelance.*Paycheque.* Expenses .*Dining.*Groceries/, text)
+      assert_includes text, "Paycheque 40% $1,200.00 earned of $3,000.00 goal $1,800.00 to goal"
+      assert_includes text, "Freelance 130% $650.00 earned of $500.00 goal Goal met"
+      assert_includes text, "Groceries 75% $75.00 spent of $100.00 $25.00 remaining"
+      assert_includes text, "Dining 130% $52.00 spent of $40.00 $12.00 over budget"
+
+      assert_select "[role=progressbar][aria-valuetext='130% of goal'] .bg-mint-blue"
+      assert_select "[role=progressbar][aria-valuetext='130% spent'] .bg-mint-negative"
+      goal_met = panel.css("span").find { |span| span.text == "Goal met" }
+      assert_includes goal_met["class"], "text-mint-green"
+      assert_empty panel.css("li").select { |row| row.text.include?("Freelance") }.flat_map { |row| row.css(".text-mint-negative, .bg-mint-negative") }
+    end
+  end
+
+  test "suggests creating a budget when there are none" do
+    create(:account)
+
+    get root_path
+    assert_select "a[href=?]", new_budget_path, text: "Create a budget"
+  end
+
   test "loads in a fixed number of queries regardless of how many records exist" do
     2.times do |n|
       account = create(:account, name: "Account #{n}", account_type: n.even? ? "chequing" : "credit_card")
       category = create(:category)
+      create(:budget, category: category)
       3.times { create(:transaction, account: account, category: category) }
     end
-    # Accounts with balances, spending by category, recent transactions + their accounts and categories.
-    assert_queries_count(5) { get root_path }
+    # Accounts with balances, spending by category, recent transactions + their accounts and categories,
+    # budgets with their categories, and spending for all budgets.
+    assert_queries_count(7) { get root_path }
   end
 end

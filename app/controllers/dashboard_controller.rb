@@ -12,5 +12,6 @@ class DashboardController < ApplicationController
     @recent_transactions = Transaction.includes(:account, :category).newest_first.limit(RECENT_TRANSACTIONS_LIMIT).to_a
     @spending_month = Date.current
     @spending_by_category = Transaction.spending_by_category(@spending_month)
+    @budget_progress = BudgetProgress.call(@spending_month)
   end
 end
