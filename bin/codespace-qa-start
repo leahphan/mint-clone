@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+# Brings the QA Codespace up to date with origin/staging and (re)starts Rails in the background.
+# Runs on every Codespace start (postStartCommand); bin/qa-refresh runs it by hand.
+#
+# The QA Codespace mirrors origin/staging. Uncommitted changes and local commits on staging
+# inside it are DISCARDED. Untracked and ignored files (log/, tmp/, storage/, .env*, keys) are kept.
+# Database data lives in the Postgres container and is kept; db:prepare only creates and migrates.
+require "fileutils"
+require "socket"
+
+SCRIPT = File.expand_path(__FILE__)
+APP_ROOT = File.expand_path("..", __dir__)
+BRANCH = "staging"
+PORT = 3000
+LOG_PATH = File.join(APP_ROOT, "log/codespace.log")
+PID_PATH = File.join(APP_ROOT, "tmp/pids/server.pid")
+LOCK_PATH = File.join(APP_ROOT, "tmp/pids/codespace-qa-start.lock")
+
+def say(message)
+  line = "[#{Time.now.strftime('%H:%M:%S')}] #{message}"
+  puts line
+  @log.puts line
+end
+
+def fail!(message)
+  say "ERROR: #{message}"
+  say "Full output: #{LOG_PATH}"
+  exit 1
+end
+
+def run!(*command)
+  system(*command, in: File::NULL, out: @log, err: @log) || fail!("`#{command.join(' ')}` failed")
+end
+
+# A pid file can outlive its server (e.g. across a Codespace restart, where the pid may be reused),
+# so only trust it if that pid is still a Rails/Puma process.
+def server_pid
+  pid = File.read(PID_PATH).to_i if File.exist?(PID_PATH)
+  pid if pid&.positive? && rails_process?(pid)
+end
+
+def rails_process?(pid)
+  File.read("/proc/#{pid}/cmdline").match?(/puma|rails\0server/)
+rescue Errno::ENOENT
+  false
+end
+
+def port_open?
+  TCPSocket.new("127.0.0.1", PORT).close
+  true
+rescue SystemCallError
+  false
+end
+
+def stop_server
+  if (pid = server_pid)
+    say "Stopping Rails (pid #{pid})"
+    Process.kill("TERM", pid)
+    20.times { rails_process?(pid) ? sleep(0.5) : break }
+    Process.kill("KILL", pid) if rails_process?(pid)
+  elsif File.exist?(PID_PATH)
+    say "Removing stale #{PID_PATH} (no Rails process with that pid)"
+  end
+  FileUtils.rm_f(PID_PATH)
+
+  10.times { port_open? ? sleep(0.5) : break }
+  fail!("Port #{PORT} is in use by another process; stop it and run bin/qa-refresh") if port_open?
+end
+
+FileUtils.chdir APP_ROOT
+abort "bin/codespace-qa-start only runs inside GitHub Codespaces (it resets the checkout to origin/#{BRANCH})." unless ENV["CODESPACES"] == "true"
+
+FileUtils.mkdir_p [ "log", "tmp/pids" ]
+lock = File.open(LOCK_PATH, File::RDWR | File::CREAT)
+abort "Another QA start/refresh is already running; see #{LOG_PATH}" unless lock.flock(File::LOCK_EX | File::LOCK_NB)
+
+# Start a fresh log, appending so a still-running server's writes don't leave a gap of NUL bytes.
+synced = ENV["QA_SYNCED"] == "1"
+File.write(LOG_PATH, "") unless synced
+@log = File.open(LOG_PATH, "a")
+@log.sync = true
+$stdout.sync = true
+
+unless synced
+  current_branch = `git branch --show-current`.strip
+  if current_branch == BRANCH || ARGV.include?("--switch")
+    say "Syncing with origin/#{BRANCH} (local changes in this Codespace are discarded)"
+    run! "git", "fetch", "origin", "+refs/heads/#{BRANCH}:refs/remotes/origin/#{BRANCH}"
+    run! "git", "switch", "--discard-changes", BRANCH
+    run! "git", "reset", "--hard", "origin/#{BRANCH}"
+    say "At #{`git log -1 --format='%h %s'`.strip}"
+
+    # Continue with the version of this script that was just checked out.
+    lock.close
+    @log.close
+    exec({ "QA_SYNCED" => "1" }, SCRIPT, *ARGV)
+  else
+    say "On branch '#{current_branch}', not #{BRANCH}: skipping sync (bin/qa-refresh switches to #{BRANCH})"
+  end
+end
+
+say "Installing gems if needed"
+system("bundle", "check", out: @log, err: @log) || run!("bundle", "install")
+
+say "Waiting for PostgreSQL"
+30.times { system("pg_isready", "-q") ? break : sleep(1) }
+fail!("PostgreSQL is not accepting connections") unless system("pg_isready", "-q")
+
+say "Preparing database (creates and migrates; keeps existing data)"
+run! "bin/rails", "db:prepare"
+
+say "Building Tailwind CSS"
+run! "bin/rails", "tailwindcss:build"
+
+stop_server
+
+say "Starting Rails (bin/dev)"
+pid = Process.spawn("setsid", "bin/dev", in: File::NULL, out: @log, err: @log)
+server = Process.detach(pid)
+
+60.times { port_open? || !server.alive? ? break : sleep(1) }
+fail!("Rails did not start on port #{PORT}") unless port_open? && server.alive?
+
+say "Rails is running (pid #{pid})"
+say "QA URL: https://#{ENV['CODESPACE_NAME']}-#{PORT}.#{ENV['GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN']}" if ENV["CODESPACE_NAME"]

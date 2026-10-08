@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+# Pulls the latest origin/staging into the running QA Codespace and restarts Rails.
+# Same steps as Codespace startup, but also switches to staging if the checkout is elsewhere.
+exec File.expand_path("codespace-qa-start", __dir__), "--switch", *ARGV

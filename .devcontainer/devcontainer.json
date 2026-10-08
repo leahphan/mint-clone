@@ -26,5 +26,7 @@
     }
   },
 
-  "postCreateCommand": "bin/setup --skip-server && bin/rails tailwindcss:build"
+  // Runs on every start/resume: syncs to origin/staging (QA Codespace only), installs gems,
+  // prepares the database and starts Rails in the background. Output: log/codespace.log.
+  "postStartCommand": "bin/codespace-qa-start"
 }
