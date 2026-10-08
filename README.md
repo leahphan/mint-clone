@@ -19,6 +19,8 @@ One permanent QA Codespace runs `staging`.
 
 On every start, the Codespace resets itself to `origin/staging`, installs gems if needed, runs
 `bin/rails db:prepare` (migrates; keeps your QA data) and starts Rails in the background.
+While it runs, `bin/qa-watch` checks `origin/staging` every minute and does the same when it moves,
+so new staging pushes show up within about two minutes: just reload Safari.
 
 **Don't edit code in the QA Codespace.** Uncommitted changes and local commits on `staging` there
 are discarded on every start. Untracked files (`log/`, `tmp/`, `storage/`, `.env*`) and the database are kept.
@@ -32,6 +34,7 @@ bin/qa-refresh
 ### Debugging
 
 - Startup log: `log/codespace.log` (Rails request log: `log/development.log`)
+- Auto-update log: `log/qa-watch.log`
 - Is Rails up? `curl -sI localhost:3000` should print `HTTP/1.1 200 OK`
 - Restart Rails: `bin/qa-refresh`
 - Your URL (bookmark this once): `echo https://$CODESPACE_NAME-3000.$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`,
