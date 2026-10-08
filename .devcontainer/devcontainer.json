@@ -1,0 +1,30 @@
+// For format details, see https://containers.dev/implementors/json_reference/
+{
+  "name": "mint",
+  "dockerComposeFile": "compose.yaml",
+  "service": "rails-app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  // Ruby comes from the image (matches .ruby-version). The app uses importmap and
+  // the standalone Tailwind CLI, so no Node or Yarn is needed.
+  "features": {
+    "ghcr.io/rails/devcontainer/features/postgres-client:1": {}
+  },
+
+  "containerEnv": {
+    // libpq reads these, so config/database.yml needs no changes.
+    "PGHOST": "postgres",
+    "PGUSER": "postgres"
+  },
+
+  // Private by default; Codespaces forwards it to https://<codespace>-3000.app.github.dev.
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Rails",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "postCreateCommand": "bin/setup --skip-server && bin/rails tailwindcss:build"
+}
