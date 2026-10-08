@@ -114,8 +114,9 @@ run! "bin/rails", "tailwindcss:build"
 
 stop_server
 
+# Listen on all interfaces so Codespaces' port forwarder can reach Rails (the port itself stays private).
 say "Starting Rails (bin/dev)"
-pid = Process.spawn("setsid", "bin/dev", in: File::NULL, out: @log, err: @log)
+pid = Process.spawn({ "BINDING" => "0.0.0.0" }, "setsid", "bin/dev", in: File::NULL, out: @log, err: @log)
 server = Process.detach(pid)
 
 60.times { port_open? || !server.alive? ? break : sleep(1) }
