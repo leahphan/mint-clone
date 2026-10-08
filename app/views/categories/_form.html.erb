@@ -1,0 +1,25 @@
+<%# locals: (category:, submit_label:, cancel_path: nil) -%>
+<%= form_with model: category, class: "panel-body space-y-4" do |form| %>
+  <%= render "shared/form_errors", record: category %>
+
+  <div>
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-input", placeholder: "e.g. Groceries" %>
+  </div>
+
+  <div>
+    <%= form.label :category_type, "Type", class: "form-label" %>
+    <%= form.select :category_type, Category.category_types.keys.map { |type| [ type.humanize, type ] },
+      { prompt: "Choose a type" }, class: "form-input" %>
+    <p class="form-hint">Expense budgets track spending; income budgets track money earned. Transfers between your own accounts, like credit card payments, count as neither.</p>
+  </div>
+
+  <% if cancel_path %>
+    <div class="flex items-center justify-between gap-4 pt-1">
+      <%= link_to "Cancel", cancel_path, class: "btn-link text-sm" %>
+      <%= form.submit submit_label, class: "btn btn-primary" %>
+    </div>
+  <% else %>
+    <%= form.submit submit_label, class: "btn btn-primary w-full" %>
+  <% end %>
+<% end %>

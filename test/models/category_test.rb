@@ -18,4 +18,19 @@ class CategoryTest < ActiveSupport::TestCase
     assert_not duplicate.valid?
     assert_includes duplicate.errors[:name], "has already been taken"
   end
+
+  test "requires an expense, income, or transfer category_type" do
+    assert build(:category, category_type: "expense").valid?
+    assert build(:category, :income).income?
+    assert build(:category, category_type: "transfer").valid?
+    assert_not build(:category, category_type: nil).valid?
+    assert_not build(:category, category_type: "savings").valid?
+  end
+
+  test "a budgeted category can't become a transfer" do
+    category = create(:budget).category
+
+    assert_not category.update(category_type: "transfer")
+    assert_includes category.errors[:category_type], "can't be transfer while the category has a budget"
+  end
 end

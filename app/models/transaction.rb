@@ -2,6 +2,10 @@ class Transaction < ApplicationRecord
   belongs_to :account
   belongs_to :category, optional: true
   belongs_to :import, optional: true
+  belongs_to :merchant, optional: true
+
+  # How the category was set. Nil when uncategorized or set before this was tracked.
+  enum :categorization_source, { learned: "learned", ai: "ai", manual: "manual" }, prefix: :categorized_by
 
   validates :transaction_date, :description, presence: true
   validates :amount, presence: true, numericality: true
@@ -12,9 +16,11 @@ class Transaction < ApplicationRecord
 
   # Money spent in the month containing `date`, per category name, largest first:
   # [["Groceries", 120.50], ["Uncategorized", 40.00]]. Amounts are positive.
+  # Transfers between accounts aren't spending; uncategorized money out is.
   def self.spending_by_category(date)
     spending.in_month(date)
       .left_joins(:category)
+      .where("categories.category_type IS DISTINCT FROM ?", "transfer")
       .group("categories.name")
       .sum(:amount)
       .map { |name, total| [ name || "Uncategorized", -total ] }
