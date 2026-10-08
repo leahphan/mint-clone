@@ -1,0 +1,23 @@
+name: "mint"
+
+services:
+  rails-app:
+    image: ghcr.io/rails/devcontainer/images/ruby:4.0.3
+    volumes:
+      - ../..:/workspaces:cached
+    # Keep the container running so the editor can attach to it.
+    command: sleep infinity
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      # Local, throwaway dev database on the compose network only (not forwarded).
+      POSTGRES_HOST_AUTH_METHOD: trust
+
+volumes:
+  postgres-data:

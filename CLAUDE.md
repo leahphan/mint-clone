@@ -34,6 +34,12 @@ A personal finance web app inspired by Mint.com. Rails 8.1 monolith on PostgreSQ
 
 Ruby 4.0.3 via rbenv. Run commands from the project root — the parent directory pins an old Ruby. Local PostgreSQL databases: `mint_development`, `mint_test`.
 
+## Branches and staging
+
+`master` holds approved work only. `staging` is what the user QAs on their phone in one permanent Codespace, which resets itself to `origin/staging` on every start (`bin/codespace-qa-start`, see README "Phone QA workflow").
+
+When the user says "put this feature on staging": make sure tests and RuboCop pass on the feature branch and push it, then `git fetch origin`, check out `staging` at `origin/staging`, `git merge --no-ff <feature-branch>`, and push `staging`. On merge conflicts, stop and explain them; don't resolve them by force. Never force-push `staging`, and never merge or push anything to `master` unless the user asks.
+
 ## Commands
 
 ```bash
