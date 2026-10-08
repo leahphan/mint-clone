@@ -99,11 +99,6 @@ unless synced
   end
 end
 
-# Follow new staging pushes while the Codespace runs (bin/qa-watch exits if one is already running).
-if `git branch --show-current`.strip == BRANCH
-  Process.detach(Process.spawn("setsid", "bin/qa-watch", in: File::NULL, out: File::NULL, err: File::NULL))
-end
-
 say "Installing gems if needed"
 system("bundle", "check", out: @log, err: @log) || run!("bundle", "install")
 
