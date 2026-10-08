@@ -50,6 +50,6 @@ class BudgetsController < ApplicationController
     end
 
     def unbudgeted_categories
-      Category.where.missing(:budget).order(:name)
+      Category.budgetable.where.missing(:budget).order(:name)
     end
 end

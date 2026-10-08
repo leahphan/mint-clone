@@ -1,6 +1,8 @@
 require "test_helper"
 
 class TransactionCsvImporterTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   VALID_CSV = <<~CSV
     date,description,amount
     2026-09-01,Loblaws,-54.32
@@ -23,6 +25,14 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
       [ loblaws.transaction_date, loblaws.description, loblaws.amount, loblaws.import ]
     assert_equal [ Date.new(2026, 9, 2), "Payroll", BigDecimal("2500.00") ],
       [ payroll.transaction_date, payroll.description, payroll.amount ]
+  end
+
+  test "queues categorization of the imported transactions" do
+    import = nil
+    assert_enqueued_jobs 1, only: CategorizeImportJob do
+      import = TransactionCsvImporter.call(@account, csv_upload(VALID_CSV))
+    end
+    assert_enqueued_with job: CategorizeImportJob, args: [ import ]
   end
 
   test "imports identical rows as separate transactions" do
@@ -89,6 +99,7 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
 
     assert_not import.persisted?
     assert_equal [ 4 ], import.row_errors.pluck(:line)
+    assert_no_enqueued_jobs only: CategorizeImportJob
   end
 
   {

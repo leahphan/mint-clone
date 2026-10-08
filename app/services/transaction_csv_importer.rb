@@ -35,6 +35,7 @@ class TransactionCsvImporter
 
     import.rows_imported = transactions.size
     save_import
+    CategorizeImportJob.perform_later(import) if import.persisted?
     import
   end
 

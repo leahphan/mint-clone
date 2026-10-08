@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_181424) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_184024) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,6 +49,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_181424) do
     t.index ["account_id", "checksum"], name: "index_imports_on_account_id_and_checksum", unique: true
   end
 
+  create_table "merchants", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.bigint "category_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_merchants_on_category_id"
+    t.index ["key"], name: "index_merchants_on_key", unique: true
+  end
+
   create_table "transactions", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.date "transaction_date", null: false
@@ -58,14 +68,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_181424) do
     t.datetime "updated_at", null: false
     t.bigint "category_id"
     t.bigint "import_id"
+    t.bigint "merchant_id"
+    t.string "categorization_source"
     t.index ["account_id", "transaction_date"], name: "index_transactions_on_account_id_and_transaction_date"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"
+    t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
+    t.check_constraint "categorization_source::text = ANY (ARRAY['learned'::character varying, 'ai'::character varying, 'manual'::character varying]::text[])", name: "transactions_categorization_source_valid"
   end
 
   add_foreign_key "budgets", "categories"
   add_foreign_key "imports", "accounts"
+  add_foreign_key "merchants", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "imports"
+  add_foreign_key "transactions", "merchants"
 end

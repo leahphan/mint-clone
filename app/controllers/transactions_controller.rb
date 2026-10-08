@@ -7,9 +7,9 @@ class TransactionsController < ApplicationController
   end
 
   def create
-    @transaction = @account.transactions.build(transaction_params)
+    @transaction = @account.transactions.build
 
-    if @transaction.save
+    if SaveTransaction.call(@transaction, transaction_params)
       redirect_to @account, notice: "Transaction added."
     else
       render :new, status: :unprocessable_entity
@@ -20,7 +20,7 @@ class TransactionsController < ApplicationController
   end
 
   def update
-    if @transaction.update(transaction_params)
+    if SaveTransaction.call(@transaction, transaction_params)
       redirect_to @account, notice: "Transaction updated."
     else
       render :edit, status: :unprocessable_entity

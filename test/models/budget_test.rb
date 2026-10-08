@@ -13,6 +13,13 @@ class BudgetTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::CheckViolation) { budget.update_column(:amount, 0) }
   end
 
+  test "a transfer category can't have a budget" do
+    budget = build(:budget, category: create(:category, category_type: "transfer"))
+
+    assert_not budget.valid?
+    assert_includes budget.errors[:category], "can't be a transfer category"
+  end
+
   test "one budget per category" do
     budget = create(:budget)
     duplicate = build(:budget, category: budget.category)

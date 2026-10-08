@@ -46,9 +46,10 @@ class BudgetsTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /has already been taken/
   end
 
-  test "new budget form only offers categories without a budget" do
+  test "new budget form only offers non-transfer categories without a budget" do
     create(:budget, category: create(:category, name: "Groceries"))
     create(:category, name: "Dining")
+    create(:category, name: "Credit Card Payment", category_type: "transfer")
 
     get new_budget_path
     options = css_select("select[name='budget[category_id]'] option").map(&:text).reject(&:blank?)

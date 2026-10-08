@@ -31,7 +31,7 @@ class TransactionCategoriesTest < ActionDispatch::IntegrationTest
 
     patch account_transaction_path(@account, transaction), params: { transaction: { category_id: @groceries.id } }
     assert_redirected_to account_path(@account)
-    assert_equal @groceries, transaction.reload.category
+    assert_equal [ @groceries, "manual" ], [ transaction.reload.category, transaction.categorization_source ]
 
     patch account_transaction_path(@account, transaction), params: { transaction: { category_id: "" } }
     assert_nil transaction.reload.category

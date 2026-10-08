@@ -10,8 +10,8 @@
   <div>
     <%= form.label :category_type, "Type", class: "form-label" %>
     <%= form.select :category_type, Category.category_types.keys.map { |type| [ type.humanize, type ] },
-      { prompt: "Choose expense or income" }, class: "form-input" %>
-    <p class="form-hint">Expense budgets track spending; income budgets track money earned.</p>
+      { prompt: "Choose a type" }, class: "form-input" %>
+    <p class="form-hint">Expense budgets track spending; income budgets track money earned. Transfers between your own accounts, like credit card payments, count as neither.</p>
   </div>
 
   <% if cancel_path %>

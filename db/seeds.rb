@@ -1,9 +1,17 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# Default categories. Idempotent: run it any time with bin/rails db:seed.
+# Categories that already exist (matched by name, ignoring case) are left as they are.
+# Uncategorized is a transaction with no category, not a record. Misc is the
+# catch-all for known expenses that don't fit another category.
+{
+  "income" => [ "Income" ],
+  "expense" => [
+    "Housing", "Groceries", "Restaurants & Dining", "Transportation", "Utilities", "Shopping",
+    "Entertainment", "Health & Medical", "Personal Care", "Kids & Family", "Travel", "Education",
+    "Gifts & Donations", "Fees & Charges", "Taxes", "Misc"
+  ],
+  "transfer" => [ "Transfer", "Credit Card Payment" ]
+}.each do |category_type, names|
+  names.each do |name|
+    Category.where("LOWER(name) = LOWER(?)", name).first_or_create!(name: name, category_type: category_type)
+  end
+end

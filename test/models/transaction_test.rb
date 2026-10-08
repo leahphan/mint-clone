@@ -50,6 +50,8 @@ class TransactionTest < ActiveSupport::TestCase
       create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 30), amount: "-45.68")
       create(:transaction, category: dining, transaction_date: Date.new(2026, 9, 10), amount: "-30.00")
       create(:transaction, category: nil, transaction_date: Date.new(2026, 9, 12), amount: "-12.50")
+      card_payment = create(:category, name: "Credit Card Payment", category_type: "transfer")
+      create(:transaction, category: card_payment, transaction_date: Date.new(2026, 9, 20), amount: "-500.00") # transfer: not spending
 
       create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 15), amount: "20.00") # refund: not spending
       create(:transaction, category: groceries, transaction_date: Date.new(2026, 8, 31), amount: "-999.00") # last month
