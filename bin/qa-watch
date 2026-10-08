@@ -37,6 +37,13 @@ loop do
   next if remote == `git rev-parse HEAD`.strip || remote == last_tried
   last_tried = remote
 
+  # A docs-only push changes nothing Rails runs: update the files without a restart.
+  if `git diff --name-only HEAD #{remote}`.split.all? { |path| path.end_with?(".md") }
+    say "origin/#{BRANCH} moved to #{remote[0, 7]} (docs only); updating files without restarting Rails"
+    system("git", "reset", "-q", "--hard", remote, out: LOG, err: LOG) || say("git reset failed")
+    next
+  end
+
   say "origin/#{BRANCH} moved to #{remote[0, 7]}; refreshing"
   if system({ "QA_SYNCED" => nil }, "bin/codespace-qa-start", in: File::NULL, out: LOG, err: LOG)
     say "Refreshed"
