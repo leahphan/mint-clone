@@ -41,3 +41,17 @@ bin/qa-refresh
 
 Port 3000 is private: it opens only for you, signed in to GitHub in that browser. Secrets
 come from Codespaces secrets (github.com → Settings → Codespaces), never from the repo.
+
+## CSV import
+
+Upload a bank or credit card CSV export on an account's Import page. Common layouts are
+recognized automatically; anything uncertain shows a preview where you confirm or correct the
+columns, and a confirmed layout is remembered for that account.
+
+- Rows with a running balance (e.g. TD exports) are deduplicated across overlapping exports.
+- Rows without one only dedupe re-uploads of the same file; matches across files are imported
+  and flagged as possible duplicates, never dropped. Reliable overlap dedupe needs a balance or a
+  transaction ID, so this is a known limitation for such formats.
+- Unconfirmed uploads are deleted after 24 hours (also `bin/rails imports:purge_pending`).
+- AI schema detection is off unless `AI_CSV_SCHEMA_ENABLED=true` (uses the `OLLAMA_*` settings).
+  It only sees a redacted description of the file: column statistics and cell kinds, never values.
