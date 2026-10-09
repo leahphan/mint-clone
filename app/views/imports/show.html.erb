@@ -1,0 +1,169 @@
+<% content_for :title, @import.pending? ? "Check the columns" : "Import summary" %>
+
+<div class="mx-auto max-w-4xl space-y-5">
+  <%= render "shared/page_header", title: @import.pending? ? "Check the columns" : "Import summary", subtitle: "#{@account.name} · #{@import.filename}" do %>
+    <%= link_to "Back to #{@account.name}", @account, class: "btn btn-secondary" %>
+  <% end %>
+
+  <% if @import.completed? %>
+    <section class="panel stat-strip sm:grid-cols-4" aria-label="Import results">
+      <%= render layout: "shared/stat", locals: { label: "Imported" } do %>
+        <span class="font-semibold tabular-nums"><%= @import.rows_imported %></span>
+      <% end %>
+      <%= render layout: "shared/stat", locals: { label: "Skipped duplicates" } do %>
+        <span class="font-semibold tabular-nums"><%= @import.rows_skipped %></span>
+      <% end %>
+      <%= render layout: "shared/stat", locals: { label: "Possible duplicates" } do %>
+        <span class="font-semibold tabular-nums"><%= @possible_duplicates.size %></span>
+      <% end %>
+      <%= render layout: "shared/stat", locals: { label: "Failed rows" } do %>
+        <span class="<%= @import.rows_failed.positive? ? "text-mint-negative" : "" %> font-semibold tabular-nums"><%= @import.rows_failed %></span>
+      <% end %>
+    </section>
+
+    <% if @possible_duplicates.any? %>
+      <%= render layout: "shared/panel", locals: { title: "Possible duplicates", meta: "Imported, but they match a transaction that was already here" } do %>
+        <div class="overflow-x-auto">
+          <table class="data-table data-table-compact">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @possible_duplicates.each do |transaction| %>
+                <tr>
+                  <td class="whitespace-nowrap"><%= short_date transaction.transaction_date %></td>
+                  <td><%= transaction.description %></td>
+                  <td class="text-right"><%= amount_tag transaction.amount %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <p class="panel-empty">This file has no running balances, so a repeat purchase can't be told apart from one imported before. Delete any that are real duplicates.</p>
+      <% end %>
+    <% end %>
+
+    <% if @import.failed_rows.any? %>
+      <%= render layout: "shared/panel", locals: { title: "Rows that couldn't be imported", meta: "Fix them and upload the file again; imported rows will be skipped" } do %>
+        <%= render "imports/row_errors", failures: @import.failed_rows %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <div class="rounded-[2px] border-l-4 border-mint-warning bg-white px-4 py-3 text-sm" role="status">
+      <% if @import.confidence.to_d < CsvSchemaDetector::RECOGNIZED %>
+        <p>We couldn't recognize this file's layout. Choose which column holds what, then check the preview.</p>
+      <% else %>
+        <p>We're not sure how to read this file. Check the columns and the preview before importing.</p>
+      <% end %>
+      <% if ambiguous_dates?(@table, @schema) %>
+        <p class="mt-1 font-semibold">Every date in this file fits both MM/DD/YYYY and DD/MM/YYYY. Check the date format.</p>
+      <% end %>
+    </div>
+
+    <%= render "shared/form_errors", record: @import %>
+
+    <%= render layout: "shared/panel", locals: { title: "Columns" } do %>
+      <%= form_with url: account_import_path(@account, @import), method: :get, scope: :schema, class: "panel-body grid gap-4 sm:grid-cols-2" do |form| %>
+        <% columns = column_options(@table) %>
+        <div>
+          <%= form.label :date_column, "Date", class: "form-label" %>
+          <%= form.select :date_column, columns, { include_blank: true, selected: @schema.date_column }, class: "form-input" %>
+        </div>
+        <div>
+          <%= form.label :date_format, "Date format", class: "form-label" %>
+          <%= form.select :date_format, date_format_options, { include_blank: true, selected: @schema.date_format }, class: "form-input" %>
+        </div>
+        <div>
+          <%= form.label :description_column, "Description", class: "form-label" %>
+          <%= form.select :description_column, columns, { include_blank: true, selected: @schema.description_column }, class: "form-input" %>
+        </div>
+        <div>
+          <%= form.label :balance_column, "Running balance", class: "form-label" %>
+          <%= form.select :balance_column, columns, { include_blank: "None", selected: @schema.balance_column }, class: "form-input" %>
+        </div>
+        <div class="sm:col-span-2">
+          <%= form.label :amount_strategy, "Amounts", class: "form-label" %>
+          <%= form.select :amount_strategy, [ [ "One amount column (positive and negative)", "signed" ], [ "Separate money out and money in columns", "debit_credit" ] ],
+                { include_blank: true, selected: @schema.amount_strategy }, class: "form-input" %>
+        </div>
+        <div>
+          <%= form.label :amount_column, "Amount column", class: "form-label" %>
+          <%= form.select :amount_column, columns, { include_blank: true, selected: @schema.amount_column }, class: "form-input" %>
+          <p class="form-hint">For one amount column.</p>
+        </div>
+        <div>
+          <%= form.label :negative_means, "Negative amounts are", class: "form-label" %>
+          <%= form.select :negative_means, [ [ "Money out (purchases, withdrawals)", "money_out" ], [ "Money in (payments, refunds)", "money_in" ] ],
+                { selected: @schema.negative_means }, class: "form-input" %>
+          <p class="form-hint">For one amount column.</p>
+        </div>
+        <div>
+          <%= form.label :debit_column, "Money out column", class: "form-label" %>
+          <%= form.select :debit_column, columns, { include_blank: true, selected: @schema.debit_column }, class: "form-input" %>
+          <p class="form-hint">For separate columns: purchases, withdrawals.</p>
+        </div>
+        <div>
+          <%= form.label :credit_column, "Money in column", class: "form-label" %>
+          <%= form.select :credit_column, columns, { include_blank: true, selected: @schema.credit_column }, class: "form-input" %>
+          <p class="form-hint">For separate columns: deposits, refunds, card payments.</p>
+        </div>
+        <div class="sm:col-span-2">
+          <%= form.submit "Update preview", name: nil, class: "btn btn-secondary" %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= render layout: "shared/panel", locals: { title: "Preview", meta: ("First #{[ @transactions.size, ImportsController::PREVIEW_ROWS ].min} of #{pluralize(@transactions.size, "readable row")}" if @problems.empty?) } do %>
+      <% if @problems.any? %>
+        <ul class="panel-body list-disc space-y-1 pl-8 text-sm text-mint-negative">
+          <% @problems.each do |problem| %>
+            <li><%= problem %></li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="overflow-x-auto">
+          <table class="data-table data-table-compact">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="text-right">Amount</th>
+                <th class="text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @transactions.first(ImportsController::PREVIEW_ROWS).each do |transaction| %>
+                <tr>
+                  <td class="tabular-nums text-mint-muted"><%= transaction.line %></td>
+                  <td class="whitespace-nowrap"><%= short_date transaction.date %></td>
+                  <td><%= transaction.raw_description %></td>
+                  <td class="text-right"><%= amount_tag transaction.amount %></td>
+                  <td class="text-right tabular-nums"><%= transaction.source_balance && number_to_currency(transaction.source_balance) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% end %>
+
+    <% if @failures.any? %>
+      <%= render layout: "shared/panel", locals: { title: "Rows that can't be read with these columns", meta: "They'll be listed, not imported" } do %>
+        <%= render "imports/row_errors", failures: @failures %>
+      <% end %>
+    <% end %>
+
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <%= button_to "Discard", account_import_path(@account, @import), method: :delete, class: "btn-link text-sm" %>
+      <% if @problems.empty? %>
+        <%= button_to "Import #{pluralize(@transactions.size, "transaction")}", account_import_path(@account, @import),
+              method: :patch, params: { schema: @schema.to_h }, class: "btn btn-primary" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

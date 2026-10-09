@@ -1,0 +1,31 @@
+<%# locals: (failures:, limit: ImportsController::MAX_FAILED_ROWS_SHOWN) -%>
+<%# Rows that couldn't be read: [{ line:, row:, messages: [...] }]. -%>
+<div class="overflow-x-auto">
+  <table class="data-table data-table-compact">
+    <thead>
+      <tr>
+        <th>Line</th>
+        <th>Row</th>
+        <th>Problems</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% failures.first(limit).each do |failure| %>
+        <tr>
+          <td class="font-semibold tabular-nums"><%= failure[:line] %></td>
+          <td><code class="font-mono text-xs break-all"><%= failure[:row] %></code></td>
+          <td>
+            <ul class="space-y-1 text-mint-negative">
+              <% failure[:messages].each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% if failures.size > limit %>
+  <p class="panel-empty">and <%= pluralize(failures.size - limit, "more row") %></p>
+<% end %>

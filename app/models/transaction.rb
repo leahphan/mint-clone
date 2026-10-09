@@ -10,7 +10,8 @@ class Transaction < ApplicationRecord
   validates :transaction_date, :description, presence: true
   validates :amount, presence: true, numericality: true
 
-  scope :newest_first, -> { order(transaction_date: :desc, created_at: :desc) }
+  # Imported rows share a created_at, so id breaks the tie (rows are inserted oldest first).
+  scope :newest_first, -> { order(transaction_date: :desc, created_at: :desc, id: :desc) }
   scope :spending, -> { where(amount: ...0) }
   scope :in_month, ->(date) { where(transaction_date: date.all_month) }
 

@@ -64,4 +64,13 @@ class TransactionTest < ActiveSupport::TestCase
       ], Transaction.spending_by_category(Date.current)
     end
   end
+
+  test "a source fingerprint is unique within an account but not across accounts, and may be blank" do
+    account = create(:account)
+    create(:transaction, account: account, source_fingerprint: "abc")
+
+    assert_raises(ActiveRecord::RecordNotUnique) { create(:transaction, account: account, source_fingerprint: "abc") }
+    assert create(:transaction, account: create(:account, name: "Visa"), source_fingerprint: "abc").persisted?
+    assert_difference("Transaction.count", 2) { 2.times { create(:transaction, account: account, source_fingerprint: nil) } }
+  end
 end

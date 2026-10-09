@@ -3,13 +3,10 @@
 <div class="mx-auto max-w-3xl space-y-6">
   <%= render "shared/page_header", title: "Import transactions", subtitle: @account.name %>
 
-  <%= render layout: "shared/card", locals: { title: "File format" } do %>
+  <%= render layout: "shared/card", locals: { title: "Your bank's CSV export" } do %>
     <div class="space-y-3 p-5 text-sm">
-      <p>Upload a CSV file with a header row of <code class="rounded-[2px] bg-mint-page px-1.5 py-0.5 font-mono text-xs">date,description,amount</code>, for example:</p>
-      <pre class="overflow-x-auto rounded-[2px] bg-mint-page p-4 font-mono text-xs leading-relaxed">date,description,amount
-2026-09-01,Loblaws,-54.32
-2026-09-02,Payroll,2500.00</pre>
-      <p class="text-mint-muted">Dates use YYYY-MM-DD. Amounts are negative for money out and positive for money in. If any row is invalid, nothing is imported.</p>
+      <p>Upload the CSV file your bank or credit card exports. Common layouts are recognized automatically: with or without a header row, one amount column or separate money out and money in columns.</p>
+      <p class="text-mint-muted">If we're not sure how to read a file, you'll see a preview to check the columns first. Transactions that were already imported are skipped, so overlapping exports are fine.</p>
     </div>
   <% end %>
 
@@ -22,40 +19,14 @@
         <%= form.file_field :file, accept: ".csv,text/csv", class: "form-input file:mr-4 file:cursor-pointer file:rounded-[2px] file:border-0 file:bg-mint-blue file:px-3 file:py-1 file:text-sm file:font-extrabold file:text-white" %>
       </div>
 
+      <div class="flex items-center gap-2 text-sm">
+        <%= form.check_box :review %>
+        <%= form.label :review, "Let me check the columns before importing" %>
+      </div>
+
       <div class="flex items-center justify-between gap-4 pt-2">
         <%= link_to "Cancel", @account, class: "btn-link text-sm" %>
         <%= form.submit "Import", class: "btn btn-primary" %>
-      </div>
-    <% end %>
-  <% end %>
-
-  <% if @import.row_errors.any? %>
-    <%= render layout: "shared/card", locals: { title: "Rows to fix" } do %>
-      <div class="overflow-x-auto">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Line</th>
-              <th>Row</th>
-              <th>Problems</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @import.row_errors.each do |row_error| %>
-              <tr>
-                <td class="font-semibold tabular-nums"><%= row_error[:line] %></td>
-                <td><code class="font-mono text-xs break-all"><%= row_error[:row] %></code></td>
-                <td>
-                  <ul class="space-y-1 text-mint-negative">
-                    <% row_error[:messages].each do |message| %>
-                      <li><%= message %></li>
-                    <% end %>
-                  </ul>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
       </div>
     <% end %>
   <% end %>
