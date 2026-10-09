@@ -8,7 +8,9 @@
   // Ruby comes from the image (matches .ruby-version). The app uses importmap and
   // the standalone Tailwind CLI, so no Node or Yarn is needed.
   "features": {
-    "ghcr.io/rails/devcontainer/features/postgres-client:1": {}
+    "ghcr.io/rails/devcontainer/features/postgres-client:1": {},
+    "ghcr.io/devcontainers/features/git-lfs:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
   "containerEnv": {
