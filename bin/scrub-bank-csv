@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# Development-only: writes a scrubbed copy of a bank CSV to tmp/scrubbed-bank-data/.
+# Runs entirely locally and never modifies the input file. See README "Scrubbing bank CSVs".
+require "rubygems"
+require "bundler/setup"
+require "optparse"
+require_relative "../script/bank_csv_scrubber"
+
+options = {}
+preview = false
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: bin/scrub-bank-csv [options] INPUT.csv"
+  opts.on("--preview", "Print the detected structure and what would be replaced, without writing") { preview = true }
+  opts.on("--strict", "Also replace city and category words, store numbers, and short reference codes") { options[:strict] = true }
+  opts.on("--randomize-amounts", "Scale amounts, keeping direction and repeated amounts; recalculates balances") { options[:randomize_amounts] = true }
+  opts.on("--scrub-balances", "Shift every running balance by one hidden offset") { options[:scrub_balances] = true }
+  opts.on("--shift-dates", "Move every date back by one hidden number of days, keeping formats") { options[:shift_dates] = true }
+end
+
+begin
+  parser.parse!(ARGV)
+  abort(parser.help) unless ARGV.size == 1
+
+  scrubber = BankCsvScrubber.new(ARGV.first, **options)
+  if preview
+    puts scrubber.preview
+    puts "\nPreview only: nothing was written."
+  else
+    scrubber.call
+    puts scrubber.report
+  end
+rescue OptionParser::ParseError, BankCsvScrubber::Error, SystemCallError => error
+  abort "scrub-bank-csv: #{error.message}"
+end

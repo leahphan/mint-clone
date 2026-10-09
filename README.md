@@ -18,7 +18,8 @@ One permanent QA Codespace runs `staging`.
 7. If it's good, ask Claude to open a PR / merge the feature to master.
 
 On every start, the Codespace resets itself to `origin/staging`, installs gems if needed, runs
-`bin/rails db:prepare` (migrates; keeps your QA data) and starts Rails in the background.
+`bin/rails db:prepare` (migrates; keeps your QA data), builds Tailwind CSS, and starts Rails with
+the Tailwind watcher in the background.
 
 **Don't edit code in the QA Codespace.** Uncommitted changes and local commits on `staging` there
 are discarded on every start. Untracked files (`log/`, `tmp/`, `storage/`, `.env*`) and the database are kept.
@@ -38,6 +39,15 @@ bin/qa-refresh
   also printed at the end of `log/codespace.log`. The pattern is
   `https://<codespace-name>-3000.app.github.dev`. It belongs to the Codespace, so it stays the same
   as long as you keep this Codespace.
+
+### If the app URL shows 502
+
+First check `curl -sI localhost:3000` in the Codespace. If it returns `HTTP/1.1 200 OK` but the
+browser still shows 502, Rails is running and the Codespaces port-forwarding tunnel may be stale.
+In VS Code, open the **Ports** tab, right-click port `3000`, choose **Stop Forwarding Port**, then
+click **Forward a Port**, enter `3000`, and choose **Open in Browser** for the newly forwarded port.
+Keep the port visibility **Private**. If Rails is not responding locally, use `bin/qa-refresh`
+instead.
 
 Port 3000 is private: it opens only for you, signed in to GitHub in that browser. Secrets
 come from Codespaces secrets (github.com → Settings → Codespaces), never from the repo.
@@ -59,3 +69,34 @@ columns, and a confirmed layout is remembered for that account.
   hourly in production, or with `bin/rails imports:purge_pending`.
 - AI schema detection is off unless `AI_CSV_SCHEMA_ENABLED=true` (uses the `OLLAMA_*` settings).
   It only sees a redacted description of the file: column statistics and cell kinds, never values.
+
+## Scrubbing bank CSVs
+
+`bin/scrub-bank-csv` makes a copy of a real bank CSV that is safe to share or to use as a test
+fixture. It's a development-only tool: it runs entirely on your machine (no network calls), never
+modifies the input file, and isn't loaded by the app.
+
+```bash
+bin/scrub-bank-csv --preview ~/Downloads/accountactivity.csv   # show the detected structure; writes nothing
+bin/scrub-bank-csv ~/Downloads/accountactivity.csv             # writes tmp/scrubbed-bank-data/accountactivity-scrubbed.csv
+bin/scrub-bank-csv --strict --randomize-amounts --scrub-balances --shift-dates ~/Downloads/accountactivity.csv
+```
+
+By default dates, amounts, and running balances are kept exactly, along with the delimiter, quoting,
+header, blank lines, line endings, row order, and duplicate rows. Descriptions keep their shape and
+processor prefixes (`SQ *JOES CAFE TORONTO ON #0382` → `SQ *KAFU CAFE TORONTO ON #0382`,
+`E-TRANSFER TO JOHN SMITH` → `E-TRANSFER TO TEST PERSON A`). Names, emails, phone numbers, postal
+codes, and card, account, and reference numbers are replaced, the same way every time within one
+file, so repeated merchants stay repeated.
+
+| Flag | Effect |
+| --- | --- |
+| `--preview` | Print input/output paths, the detected structure, and what will be replaced. Writes nothing. |
+| `--strict` | Also replace city and category words (`TORONTO`, `CAFE`), store numbers, and short reference codes. |
+| `--randomize-amounts` | Scale each distinct amount (same amount → same new amount), keeping direction; recalculates balances. |
+| `--scrub-balances` | Shift every running balance by one hidden offset, keeping the arithmetic. |
+| `--shift-dates` | Move every date back by one hidden number of days, keeping formats and gaps. |
+
+Output always goes to `tmp/scrubbed-bank-data/`, which is gitignored. Skim the output before sharing
+it — the scrubber can't recognize every possible identifier. To commit a fixture, copy the
+*scrubbed* file into `test/fixtures/files/`; never commit the original.
