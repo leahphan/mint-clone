@@ -40,5 +40,14 @@ bin/qa-refresh
   `https://<codespace-name>-3000.app.github.dev`. It belongs to the Codespace, so it stays the same
   as long as you keep this Codespace.
 
+### If the app URL shows 502
+
+First check `curl -sI localhost:3000` in the Codespace. If it returns `HTTP/1.1 200 OK` but the
+browser still shows 502, Rails is running and the Codespaces port-forwarding tunnel may be stale.
+In VS Code, open the **Ports** tab, right-click port `3000`, choose **Stop Forwarding Port**, then
+click **Forward a Port**, enter `3000`, and choose **Open in Browser** for the newly forwarded port.
+Keep the port visibility **Private**. If Rails is not responding locally, use `bin/qa-refresh`
+instead.
+
 Port 3000 is private: it opens only for you, signed in to GitHub in that browser. Secrets
 come from Codespaces secrets (github.com → Settings → Codespaces), never from the repo.
