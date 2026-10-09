@@ -14,7 +14,7 @@ class Account < ApplicationRecord
   }.freeze
 
   validates :name, presence: true
-  validates :opening_balance, numericality: true
+  validates :opening_balance, numericality: { greater_than: -10_000_000_000, less_than: 10_000_000_000 } # fits decimal(12, 2)
 
   # Each account with a `balance` attribute (opening balance plus its transactions), in one query.
   scope :with_balances, -> {
@@ -26,6 +26,11 @@ class Account < ApplicationRecord
   # Groups already-loaded accounts for display, in GROUPS order: [["Cash", [...]], ["Credit Cards", [...]]].
   def self.grouped(accounts)
     accounts.group_by(&:group_name).sort_by { |group, _accounts| GROUPS.keys.index(group) }
+  end
+
+  # The form leaves the opening balance blank when there is none; store that as zero.
+  def opening_balance=(value)
+    super(value.presence || 0)
   end
 
   def group_name

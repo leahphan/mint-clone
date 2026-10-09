@@ -49,6 +49,28 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
     assert_equal BigDecimal("1500"), account.opening_balance
   end
 
+  test "new account form leaves the opening balance blank so typing doesn't append to 0.0" do
+    get new_account_path
+
+    assert_select "input[name='account[opening_balance]']:not([value])[placeholder='0.00']"
+  end
+
+  test "creates an account with a blank opening balance as zero" do
+    assert_difference "Account.count", 1 do
+      post accounts_path, params: { account: { name: "Rainy Day", account_type: "savings", opening_balance: "" } }
+    end
+
+    assert_equal 0, Account.last.opening_balance
+  end
+
+  test "rejects an opening balance too large to store instead of erroring" do
+    assert_no_difference "Account.count" do
+      post accounts_path, params: { account: { name: "Huge", account_type: "chequing", opening_balance: "10000000000" } }
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "account page lists the opening balance after the newest-first transactions" do
     account = create(:account, opening_balance: "500.00")
     create(:transaction, account: account, description: "Older", transaction_date: 2.days.ago)

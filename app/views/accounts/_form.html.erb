@@ -14,7 +14,8 @@
 
   <div>
     <%= form.label :opening_balance, class: "form-label" %>
-    <%= form.number_field :opening_balance, step: "0.01", class: "form-input" %>
+    <%# Blank rather than "0.0", so typing an amount doesn't append to it (a blank balance saves as zero). -%>
+    <%= form.number_field :opening_balance, value: account.opening_balance.nonzero?, step: "0.01", placeholder: "0.00", class: "form-input" %>
     <p class="form-hint">The balance before your first transaction. Negative for money owed, e.g. a credit card balance.</p>
   </div>
 
