@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_184024) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -46,7 +46,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_184024) do
     t.integer "rows_imported", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "checksum"], name: "index_imports_on_account_id_and_checksum", unique: true
+    t.string "status", null: false
+    t.text "content"
+    t.jsonb "schema"
+    t.string "schema_source"
+    t.decimal "confidence", precision: 3, scale: 2
+    t.string "format_fingerprint"
+    t.integer "rows_skipped", default: 0, null: false
+    t.integer "rows_failed", default: 0, null: false
+    t.jsonb "failed_rows", default: [], null: false
+    t.index ["account_id", "checksum"], name: "index_imports_on_account_id_and_checksum_completed", unique: true, where: "(((status)::text = 'completed'::text) AND (rows_failed = 0))"
+    t.index ["account_id", "format_fingerprint"], name: "index_imports_on_account_id_and_format_fingerprint"
+    t.check_constraint "(status::text = 'pending'::text) = (content IS NOT NULL)", name: "imports_content_only_while_pending"
+    t.check_constraint "confidence >= 0::numeric AND confidence <= 1::numeric", name: "imports_confidence_range"
+    t.check_constraint "rows_imported >= 0 AND rows_skipped >= 0 AND rows_failed >= 0", name: "imports_counts_not_negative"
+    t.check_constraint "schema_source::text = ANY (ARRAY['known'::character varying, 'heuristic'::character varying, 'ai'::character varying, 'user'::character varying]::text[])", name: "imports_schema_source_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'completed'::character varying]::text[])", name: "imports_status_valid"
   end
 
   create_table "merchants", force: :cascade do |t|
@@ -70,6 +85,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_184024) do
     t.bigint "import_id"
     t.bigint "merchant_id"
     t.string "categorization_source"
+    t.string "source_fingerprint"
+    t.jsonb "source_row"
+    t.boolean "possible_duplicate", default: false, null: false
+    t.index ["account_id", "source_fingerprint"], name: "index_transactions_on_account_id_and_source_fingerprint", unique: true
     t.index ["account_id", "transaction_date"], name: "index_transactions_on_account_id_and_transaction_date"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"

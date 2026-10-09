@@ -2,6 +2,8 @@ class Import < ApplicationRecord
   belongs_to :account
   has_many :transactions
 
+  enum :status, { pending: "pending", completed: "completed" }, default: :completed, validate: true
+
   validates :filename, :checksum, presence: true
   validates :rows_imported, numericality: { only_integer: true, greater_than: 0 }
 
