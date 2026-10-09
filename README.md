@@ -41,3 +41,34 @@ bin/qa-refresh
 
 Port 3000 is private: it opens only for you, signed in to GitHub in that browser. Secrets
 come from Codespaces secrets (github.com → Settings → Codespaces), never from the repo.
+
+## Scrubbing bank CSVs
+
+`bin/scrub-bank-csv` makes a copy of a real bank CSV that is safe to share or to use as a test
+fixture. It's a development-only tool: it runs entirely on your machine (no network calls), never
+modifies the input file, and isn't loaded by the app.
+
+```bash
+bin/scrub-bank-csv --preview ~/Downloads/accountactivity.csv   # show the detected structure; writes nothing
+bin/scrub-bank-csv ~/Downloads/accountactivity.csv             # writes tmp/scrubbed-bank-data/accountactivity-scrubbed.csv
+bin/scrub-bank-csv --strict --randomize-amounts --scrub-balances --shift-dates ~/Downloads/accountactivity.csv
+```
+
+By default dates, amounts, and running balances are kept exactly, along with the delimiter, quoting,
+header, blank lines, line endings, row order, and duplicate rows. Descriptions keep their shape and
+processor prefixes (`SQ *JOES CAFE TORONTO ON #0382` → `SQ *KAFU CAFE TORONTO ON #0382`,
+`E-TRANSFER TO JOHN SMITH` → `E-TRANSFER TO TEST PERSON A`). Names, emails, phone numbers, postal
+codes, and card, account, and reference numbers are replaced, the same way every time within one
+file, so repeated merchants stay repeated.
+
+| Flag | Effect |
+| --- | --- |
+| `--preview` | Print input/output paths, the detected structure, and what will be replaced. Writes nothing. |
+| `--strict` | Also replace city and category words (`TORONTO`, `CAFE`), store numbers, and short reference codes. |
+| `--randomize-amounts` | Scale each distinct amount (same amount → same new amount), keeping direction; recalculates balances. |
+| `--scrub-balances` | Shift every running balance by one hidden offset, keeping the arithmetic. |
+| `--shift-dates` | Move every date back by one hidden number of days, keeping formats and gaps. |
+
+Output always goes to `tmp/scrubbed-bank-data/`, which is gitignored. Skim the output before sharing
+it — the scrubber can't recognize every possible identifier. To commit a fixture, copy the
+*scrubbed* file into `test/fixtures/files/`; never commit the original.

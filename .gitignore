@@ -29,6 +29,9 @@
 !/tmp/storage/
 !/tmp/storage/.keep
 
+# Scrubbed bank CSVs from bin/scrub-bank-csv. Already covered by /tmp/*; listed so it stays ignored.
+/tmp/scrubbed-bank-data/
+
 /public/assets
 
 # Ignore key files for decrypting credentials and more.
