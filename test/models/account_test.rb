@@ -50,10 +50,11 @@ class AccountTest < ActiveSupport::TestCase
     assert_equal BigDecimal("-11.00"), Account.find(account.id).balance
   end
 
-  test "opening_balance defaults to zero and must be a number" do
+  test "opening_balance defaults to zero, treats blank as zero, and must be a number" do
     assert_equal BigDecimal("0"), Account.new.opening_balance
+    assert_equal BigDecimal("0"), build(:account, opening_balance: "").opening_balance
+    assert_equal BigDecimal("0"), build(:account, opening_balance: nil).opening_balance
     assert_not build(:account, opening_balance: "lots").valid?
-    assert_not build(:account, opening_balance: nil).valid?
   end
 
   test "balance is the opening balance plus transactions, with and without with_balances" do
