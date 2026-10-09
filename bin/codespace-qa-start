@@ -109,6 +109,9 @@ fail!("PostgreSQL is not accepting connections") unless system("pg_isready", "-q
 say "Preparing database (creates and migrates; keeps existing data)"
 run! "bin/rails", "db:prepare"
 
+say "Deleting import previews that were never confirmed (older than a day)"
+run! "bin/rails", "imports:purge_pending"
+
 say "Building Tailwind CSS"
 run! "bin/rails", "tailwindcss:build"
 

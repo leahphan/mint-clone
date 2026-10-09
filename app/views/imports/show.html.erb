@@ -22,7 +22,7 @@
     </section>
 
     <% if @possible_duplicates.any? %>
-      <%= render layout: "shared/panel", locals: { title: "Possible duplicates", meta: "Imported, but they match a transaction that was already here" } do %>
+      <%= render layout: "shared/panel", locals: { title: "Possible duplicates", meta: "Imported, and marked on the account page" } do %>
         <div class="overflow-x-auto">
           <table class="data-table data-table-compact">
             <thead>
@@ -43,12 +43,19 @@
             </tbody>
           </table>
         </div>
-        <p class="panel-empty">This file has no running balances, so a repeat purchase can't be told apart from one imported before. Delete any that are real duplicates.</p>
+        <p class="panel-empty">Each has the same date, amount and description as a transaction already in this account, and no running balance tells them apart. A repeat purchase looks the same as one imported twice, so check these against the account's transactions.</p>
       <% end %>
     <% end %>
 
     <% if @import.failed_rows.any? %>
-      <%= render layout: "shared/panel", locals: { title: "Rows that couldn't be imported", meta: "Fix them and upload the file again; imported rows will be skipped" } do %>
+      <%= render layout: "shared/panel", locals: { title: "Rows that couldn't be imported" } do %>
+        <p class="panel-body text-sm text-mint-muted">
+          <% if @import.csv_schema&.balance_column %>
+            Fix them and upload the file again: the rows already imported will be skipped.
+          <% else %>
+            Add them by hand, or upload a file with just these rows. This file has no running balances, so uploading a corrected copy of all of it would import its other rows again as possible duplicates.
+          <% end %>
+        </p>
         <%= render "imports/row_errors", failures: @import.failed_rows %>
       <% end %>
     <% end %>

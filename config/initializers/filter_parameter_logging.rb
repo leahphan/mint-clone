@@ -6,3 +6,6 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc
 ]
+
+# An uploaded CSV waiting for its columns to be confirmed (Import#content): keep bank exports out of SQL logs.
+Rails.application.config.filter_parameters += [ /\Acontent\z/ ]

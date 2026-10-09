@@ -44,6 +44,16 @@ class CsvSchemaDetectorTest < ActiveSupport::TestCase
     assert_operator result.confidence, :<, CsvSchemaDetector::AUTO_IMPORT
   end
 
+  test "reads a card that's in credit the right way round, whatever the sign of its balances" do
+    in_credit = "10/25/2026,Store A,20.00,,-400.00\n10/24/2026,Store B,35.58,,-420.00\n10/23/2026,Store C,44.42,,-455.58\n" \
+      "10/22/2026,REFUND,,100.00,-500.00\n10/21/2026,Store D,10.00,,-400.00\n"
+
+    result = CsvSchemaDetector.call(CsvTable.parse(in_credit), account: @visa, ai: nil)
+
+    assert_operator result.confidence, :>=, CsvSchemaDetector::AUTO_IMPORT
+    assert_equal [ 2, 3 ], [ result.schema.debit_column, result.schema.credit_column ]
+  end
+
   test "uses header names in any order and ignores extra columns" do
     result = detect("headed_reordered.csv", @chequing)
 

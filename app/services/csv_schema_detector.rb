@@ -23,6 +23,7 @@ class CsvSchemaDetector
   PRIOR = 0.75
   WEAK = 0.6
   GUESS = 0.5
+  DISPUTED = 0.3      # the evidence points the other way, but can't rule it out
   CONTRADICTED = 0.1
 
   SUSPECT = 0.85          # more than SUSPECT_FAILED_SHARE of rows can't be read
@@ -73,7 +74,7 @@ class CsvSchemaDetector
       date_column_level(schema), date_format_level(schema), description_level(schema),
       amount_columns_level(schema, transactions), direction_level(schema, transactions)
     ]
-    levels.map! { |level| level.between?(CONTRADICTED + 0.01, AI_CHOSEN) ? AI_CHOSEN : level } if chosen_by_ai
+    levels.map! { |level| level.between?(GUESS, AI_CHOSEN) ? AI_CHOSEN : level } if chosen_by_ai
     suspect?(failures) ? [ levels.min, SUSPECT ].min : levels.min
   end
 
@@ -103,12 +104,13 @@ class CsvSchemaDetector
       Result.new(schema, suspect?(failures) ? SUSPECT : KNOWN, "known")
     end
 
-    # [transactions, failures] when the schema can read this file, otherwise nil.
+    # [transactions, failures] when the schema can read this file, otherwise nil. Cached per mapping.
     def usable_parse(schema)
       return unless schema.valid? && schema.used_columns.all? { |column| column < table.column_count }
 
-      parsed = schema.parse(table)
-      parsed if schema.problems(table, parsed: parsed).empty?
+      @parsed ||= {}
+      @parsed[schema.to_h] ||= schema.parse(table)
+      @parsed[schema.to_h] if schema.problems(table, parsed: @parsed[schema.to_h]).empty?
     end
 
     def suspect?(failures)
@@ -209,26 +211,42 @@ class CsvSchemaDetector
       base = direction_prior(schema, transactions)
       return base if base == CONTRADICTED
 
-      level = balance_direction_level(transactions, base)
-      level = PRIOR if level >= AUTO_IMPORT && transactions.count { |t| t.amount.positive? } > transactions.count { |t| t.amount.negative? }
-      level
+      account.cash? ? bank_balance_level(transactions, base) : card_balance_level(transactions, base)
     end
 
-    # Running balances can confirm or contradict which way the amounts go. Sequential matching in file
-    # order verifies; matching out of order only supports, because balances can repeat by coincidence.
-    def balance_direction_level(transactions, base)
-      view = balance_view(transactions)
-      return base unless view
-
-      matched, flipped = sequential_ratio(transactions, view), sequential_ratio(transactions, -view)
-      return VERIFIED if matched.to_f >= RECONCILED && flipped.to_f < 0.5
+    # A bank account's balance moves with the holder's money, so its running balances confirm or contradict
+    # which way the amounts go. Sequential matching in file order verifies; matching out of order only
+    # supports, because balances can repeat by coincidence.
+    def bank_balance_level(transactions, base)
+      matched, flipped = sequential_ratio(transactions, 1), sequential_ratio(transactions, -1)
       return CONTRADICTED if flipped.to_f >= RECONCILED && matched.to_f < 0.5
 
-      matched, flipped = order_free_ratio(transactions, view), order_free_ratio(transactions, -view)
-      return [ base, SUPPORTED ].max if matched.to_f >= DENSE && flipped.to_f < 0.5
-      return CONTRADICTED if flipped.to_f >= DENSE && matched.to_f < 0.5
+      level = if matched.to_f >= RECONCILED && flipped.to_f < 0.5
+        VERIFIED
+      else
+        matched, flipped = order_free_ratio(transactions, 1), order_free_ratio(transactions, -1)
+        return CONTRADICTED if flipped.to_f >= DENSE && matched.to_f < 0.5
 
-      base
+        matched.to_f >= DENSE && flipped.to_f < 0.5 ? [ base, SUPPORTED ].max : base
+      end
+      # Right, but unusual (more deposits than spending), so worth a look before importing.
+      level >= AUTO_IMPORT && more_money_in?(transactions) ? PRIOR : level
+    end
+
+    # A card export may show the balance owed (rising with purchases) or the holder's balance (falling), and
+    # a card in credit flips the sign, so balances confirm the amounts but not which way they go. Purchases
+    # outnumbering payments decides that; a reading with more money in than out is disputed, never ruled out.
+    def card_balance_level(transactions, base)
+      reconciled = [ 1, -1 ].any? { |view| sequential_ratio(transactions, view).to_f >= RECONCILED }
+      supported = [ 1, -1 ].any? { |view| order_free_ratio(transactions, view).to_f >= DENSE }
+      return base unless reconciled || supported
+      return DISPUTED if more_money_in?(transactions)
+
+      [ base, reconciled ? HEADER : SUPPORTED ].max
+    end
+
+    def more_money_in?(transactions)
+      transactions.count { |t| t.amount.positive? } > transactions.count { |t| t.amount.negative? }
     end
 
     def direction_prior(schema, transactions)
@@ -244,20 +262,6 @@ class CsvSchemaDetector
         # Card exports differ: the more common sign is probably purchases.
         negatives = transactions.count { |t| t.amount.negative? }
         negatives > transactions.size - negatives ? PRIOR : GUESS
-      end
-    end
-
-    # +1 when balances move with the holder's money (bank accounts, cards shown as negative),
-    # -1 when they show the amount owed (most card exports), nil when it's unclear.
-    def balance_view(transactions)
-      return 1 if account.cash?
-
-      balances = transactions.filter_map(&:source_balance).reject(&:zero?)
-      return if balances.empty?
-
-      positive_share = balances.count(&:positive?).fdiv(balances.size)
-      if positive_share >= MOSTLY then -1
-      elsif positive_share <= 1 - MOSTLY then 1
       end
     end
 

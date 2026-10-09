@@ -59,8 +59,10 @@ class CsvTable
   # value. A money column that happens to be empty in one export counts as money,
   # so the fingerprint doesn't change when, say, there were no deposits.
   def fingerprint
-    shapes = (0...column_count).map { |column| shape(values(column)) }
-    Digest::SHA256.hexdigest(JSON.generate([ "v1", delimiter, column_count, normalized_header, shapes ]))
+    @fingerprint ||= begin
+      shapes = (0...column_count).map { |column| shape(values(column)) }
+      Digest::SHA256.hexdigest(JSON.generate([ "v1", delimiter, column_count, normalized_header, shapes ]))
+    end
   end
 
   private

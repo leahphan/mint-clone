@@ -4,8 +4,9 @@
 # as a pending Import for the user to check the columns, and .confirm imports it.
 #
 # Rows that were imported before are skipped (see ImportedTransaction.fingerprints).
-# Rows without a running balance that match an existing transaction are imported
-# but flagged as possible duplicates, so a real repeat purchase is never dropped.
+# A new row that matches an existing transaction its balance can't rule out (same
+# date, amount and description; see #existing_match_keys) is imported but flagged
+# as a possible duplicate, so a real repeat purchase is never dropped.
 # Rows that can't be read are recorded on the import; the rest still import.
 # Only new transactions are categorized.
 class TransactionCsvImporter
@@ -143,13 +144,13 @@ class TransactionCsvImporter
     # Returns how many were inserted.
     def insert(import, transactions)
       fingerprints = ImportedTransaction.fingerprints(transactions, checksum: import.checksum)
-      existing = existing_match_keys(transactions)
+      all_existing, existing_without_balance = existing_match_keys(transactions)
 
       rows = chronological(transactions.zip(fingerprints)).map do |transaction, fingerprint|
         {
           account_id: account.id, import_id: import.id, transaction_date: transaction.date, description: transaction.raw_description,
           amount: transaction.amount, source_fingerprint: fingerprint, source_row: transaction.source_row,
-          possible_duplicate: transaction.source_balance.nil? && existing.include?(transaction.match_key)
+          possible_duplicate: (transaction.source_balance ? existing_without_balance : all_existing).include?(transaction.match_key)
         }
       end
       rows.each_slice(INSERT_BATCH_SIZE).sum do |batch|
@@ -157,14 +158,18 @@ class TransactionCsvImporter
       end
     end
 
-    # Without a running balance, a row can't be told apart from an identical transaction already in the account,
-    # so those get flagged. Returns the match keys of the account's transactions on the dates of such rows.
+    # Match keys of the account's transactions on the file's dates: [all of them, those without a running balance].
+    # A row without a balance can't be told apart from any identical transaction. A row with one is told apart
+    # from imported rows that had balances, but not from ones entered by hand or imported without a balance.
     def existing_match_keys(transactions)
-      dates = transactions.reject(&:source_balance).map(&:date).uniq
-      return Set.new if dates.empty?
+      rows = account.transactions.left_joins(:import).where(transaction_date: transactions.map(&:date).uniq)
+        .pluck(:transaction_date, :amount, :description, Arel.sql("imports.schema ->> 'balance_column'"))
 
-      account.transactions.where(transaction_date: dates).pluck(:transaction_date, :amount, :description)
-        .to_set { |date, amount, description| ImportedTransaction.match_key(date, amount, description) }
+      rows.each_with_object([ Set.new, Set.new ]) do |(date, amount, description, balance_column), (all, without_balance)|
+        key = ImportedTransaction.match_key(date, amount, description)
+        all << key
+        without_balance << key if balance_column.nil?
+      end
     end
 
     # [transaction, fingerprint] pairs oldest first, keeping the bank's order within a day.

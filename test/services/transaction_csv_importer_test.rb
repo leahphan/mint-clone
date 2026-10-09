@@ -96,6 +96,26 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
     assert_equal CHEQUING_LINES, import_into(savings, fixture_upload("td_chequing.csv")).rows_imported
   end
 
+  test "flags rows of a balance export that match transactions imported without balances or entered by hand" do
+    import_into(@chequing, csv_upload("date,description,amount\n2026-09-09,KAFU SEMO AND _F,-130\n", filename: "old_format.csv"))
+    create(:transaction, account: @chequing, transaction_date: Date.new(2026, 9, 9), description: "FISO POBI BUKI _F", amount: -24.05)
+
+    import = import_into(@chequing, fixture_upload("td_chequing.csv"))
+
+    assert_equal [ 71, 0 ], [ import.rows_imported, import.rows_skipped ]
+    assert_equal [ "FISO POBI BUKI        _F", "KAFU SEMO AND   _F" ], import.transactions.where(possible_duplicate: true).order(:description).pluck(:description)
+  end
+
+  test "doesn't flag a repeat purchase whose balance tells it apart from one imported with a balance" do
+    import_into(@chequing, fixture_upload("duplicate_purchases.csv"))
+    later = file_fixture("duplicate_purchases.csv").read + %("2026-10-04","PHARMACY","10.00",,"1035.00"\n)
+
+    import = import_into(@chequing, csv_upload(later, filename: "later.csv"))
+
+    assert_equal [ 1, 5 ], [ import.rows_imported, import.rows_skipped ]
+    assert_not import.transactions.sole.possible_duplicate
+  end
+
   # --- Files without a running balance ---
 
   test "without balances, identical rows in one file are kept" do
@@ -234,17 +254,31 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
     assert_equal 24, pending.reload.rows_imported
   end
 
-  test "rejects confirmed columns that contradict the file and keeps the import pending" do
-    pending = import_into(@visa, csv_upload(ambiguous_visa_csv, filename: "visa.csv"))
+  test "rejects confirmed columns that contradict a bank account's balances, or can't read the file, and keeps the import pending" do
+    pending = TransactionCsvImporter.call(@chequing, fixture_upload("td_chequing.csv"), review: true, ai: nil)
+    td_chequing = pending.csv_schema
 
-    swapped = TransactionCsvImporter.confirm(pending, CsvSchema.new(visa_schema.to_h.merge(debit_column: 3, credit_column: 2)))
+    swapped = TransactionCsvImporter.confirm(pending, CsvSchema.new(td_chequing.to_h.merge(debit_column: 3, credit_column: 2)))
     assert_equal [ "The running balances show money in and money out the other way round." ], swapped.errors.full_messages
 
-    unreadable = TransactionCsvImporter.confirm(Import.find(pending.id), CsvSchema.new(visa_schema.to_h.merge(date_column: 1, description_column: 0)))
+    unreadable = TransactionCsvImporter.confirm(Import.find(pending.id), CsvSchema.new(td_chequing.to_h.merge(date_format: "%m/%d/%Y")))
     assert_equal [ "None of the rows could be read with these columns." ], unreadable.errors.full_messages
 
     assert pending.reload.pending?
-    assert_equal 0, @visa.transactions.count
+    assert_equal 0, @chequing.transactions.count
+  end
+
+  test "confirming a preview of a file that meanwhile finished importing elsewhere says it was already imported" do
+    pending = TransactionCsvImporter.call(@chequing, fixture_upload("td_chequing.csv"), review: true, ai: nil)
+    create(:import, account: @chequing, checksum: pending.checksum)
+
+    import = nil
+    assert_no_difference "Transaction.count" do
+      import = TransactionCsvImporter.confirm(pending, pending.csv_schema)
+    end
+
+    assert import.reload.pending?
+    assert_match(/was already imported into this account/, import.errors.full_messages.sole)
   end
 
   # --- Categorization ---

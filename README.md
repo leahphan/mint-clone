@@ -48,10 +48,14 @@ Upload a bank or credit card CSV export on an account's Import page. Common layo
 recognized automatically; anything uncertain shows a preview where you confirm or correct the
 columns, and a confirmed layout is remembered for that account.
 
-- Rows with a running balance (e.g. TD exports) are deduplicated across overlapping exports.
+- Rows with a running balance (e.g. TD exports) are deduplicated across overlapping exports. If
+  one matches a transaction entered by hand or imported without a balance, it's imported and
+  flagged as a possible duplicate. (Rare exception: an identical charge-and-reversal repeated on
+  the same day, landing on the same balance, can look like one already imported.)
 - Rows without one only dedupe re-uploads of the same file; matches across files are imported
   and flagged as possible duplicates, never dropped. Reliable overlap dedupe needs a balance or a
   transaction ID, so this is a known limitation for such formats.
-- Unconfirmed uploads are deleted after 24 hours (also `bin/rails imports:purge_pending`).
+- Unconfirmed uploads are deleted after 24 hours: on the next upload, on every QA Codespace start,
+  hourly in production, or with `bin/rails imports:purge_pending`.
 - AI schema detection is off unless `AI_CSV_SCHEMA_ENABLED=true` (uses the `OLLAMA_*` settings).
   It only sees a redacted description of the file: column statistics and cell kinds, never values.

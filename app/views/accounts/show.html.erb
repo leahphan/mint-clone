@@ -32,7 +32,7 @@
           <% @transactions.each do |transaction| %>
             <tr>
               <td class="whitespace-nowrap text-mint-muted"><%= short_date transaction.transaction_date %></td>
-              <td class="font-semibold"><span class="block max-w-96 truncate" title="<%= transaction.description %>"><%= transaction.description %></span></td>
+              <td class="font-semibold"><span class="block max-w-96 truncate" title="<%= transaction.description %>"><%= transaction.description %></span><% if transaction.possible_duplicate? %><span class="block text-xs font-normal text-mint-negative">Possible duplicate</span><% end %></td>
               <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-48 truncate"><%= transaction.category&.name || "Uncategorized" %></span></td>
               <td class="text-right"><%= amount_tag transaction.amount %></td>
               <td class="text-right"><%= link_to "Edit", edit_account_transaction_path(@account, transaction), class: "btn-link" %></td>

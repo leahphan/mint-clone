@@ -60,6 +60,9 @@ class ImportsTest < ActionDispatch::IntegrationTest
     assert_select ".stat-strip", text: /Possible duplicates\s*1/
     assert_select "td", text: "Starbucks"
     assert_equal 2, @chequing.transactions.where(description: "Starbucks").count
+
+    get account_path(@chequing)
+    assert_select "td", text: "StarbucksPossible duplicate", count: 1
   end
 
   test "previews an uncertain file, lets the user adjust the columns, and imports what they confirm" do

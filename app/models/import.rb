@@ -10,9 +10,6 @@ class Import < ApplicationRecord
   # Where the schema came from: a layout imported before, the heuristics, the AI, or the user.
   enum :schema_source, { known: "known", heuristic: "heuristic", ai: "ai", user: "user" }, prefix: :schema_from, validate: { allow_nil: true }
 
-  # The uploaded CSV never appears in inspect output or logs.
-  self.filter_attributes += [ :content ]
-
   validates :filename, :checksum, presence: true
   validates :content, presence: true, if: :pending?
   validates :rows_imported, :rows_skipped, :rows_failed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
