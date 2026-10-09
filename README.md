@@ -18,7 +18,8 @@ One permanent QA Codespace runs `staging`.
 7. If it's good, ask Claude to open a PR / merge the feature to master.
 
 On every start, the Codespace resets itself to `origin/staging`, installs gems if needed, runs
-`bin/rails db:prepare` (migrates; keeps your QA data) and starts Rails in the background.
+`bin/rails db:prepare` (migrates; keeps your QA data), builds Tailwind CSS, and starts Rails with
+the Tailwind watcher in the background.
 
 **Don't edit code in the QA Codespace.** Uncommitted changes and local commits on `staging` there
 are discarded on every start. Untracked files (`log/`, `tmp/`, `storage/`, `.env*`) and the database are kept.
