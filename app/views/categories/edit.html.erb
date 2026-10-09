@@ -1,0 +1,9 @@
+<% content_for :title, "Edit category" %>
+
+<div class="mx-auto max-w-xl">
+  <%= render "shared/page_header", title: "Edit category", subtitle: @category.name_was %>
+
+  <%= render layout: "shared/panel", locals: { title: "Category details" } do %>
+    <%= render "form", category: @category, submit_label: "Save changes", cancel_path: categories_path %>
+  <% end %>
+</div>

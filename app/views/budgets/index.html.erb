@@ -1,0 +1,43 @@
+<% content_for :title, "Budgets" %>
+
+<%= render "shared/page_header", title: "Budgets", subtitle: "Monthly spending limits for your categories. They repeat every month." do %>
+  <%= link_to "Add budget", new_budget_path, class: "btn btn-primary" %>
+<% end %>
+
+<%= render layout: "shared/panel", locals: { title: "Monthly budgets", meta: ("#{number_to_currency @budgets.sum(&:amount)} a month" if @budgets.any?) } do %>
+  <% if @budgets.any? %>
+    <div class="overflow-x-auto">
+      <table class="data-table data-table-compact">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th class="w-28">Type</th>
+            <th class="w-36 text-right">Monthly amount</th>
+            <th class="w-32"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @budgets.each do |budget| %>
+            <tr>
+              <td class="font-semibold"><span class="block max-w-80 truncate"><%= budget.category.name %></span></td>
+              <td class="text-mint-muted"><%= budget.category_type.humanize %></td>
+              <td class="text-right tabular-nums"><%= number_to_currency budget.amount %></td>
+              <td>
+                <div class="flex items-center justify-end gap-3">
+                  <%= link_to "Edit", edit_budget_path(budget), class: "btn-link" %>
+                  <%= button_to "Remove", budget_path(budget), method: :delete, class: "btn-link text-mint-negative",
+                    form: { data: { turbo_confirm: "Remove the #{budget.category.name} budget?" } } %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <%= render "shared/empty_state", title: "No budgets yet",
+      message: "Set a monthly limit for a category, like Groceries or Dining." do %>
+      <%= link_to "Add your first budget", new_budget_path, class: "btn btn-primary" %>
+    <% end %>
+  <% end %>
+<% end %>

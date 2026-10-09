@@ -1,0 +1,9 @@
+<% content_for :title, "Edit budget" %>
+
+<div class="mx-auto max-w-xl">
+  <%= render "shared/page_header", title: "Edit budget", subtitle: @budget.category.name %>
+
+  <%= render layout: "shared/panel", locals: { title: "Budget details" } do %>
+    <%= render "form", budget: @budget, submit_label: "Save changes" %>
+  <% end %>
+</div>

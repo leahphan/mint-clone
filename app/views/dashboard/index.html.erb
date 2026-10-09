@@ -9,7 +9,10 @@
 
       <div class="grid gap-5 xl:grid-cols-[1fr_15rem]">
         <%= render "recent_transactions", transactions: @recent_transactions %>
-        <%= render "spending", month: @spending_month, spending_by_category: @spending_by_category %>
+        <div class="space-y-5">
+          <%= render "budgets", month: @spending_month, budget_progress: @budget_progress %>
+          <%= render "spending", month: @spending_month, spending_by_category: @spending_by_category %>
+        </div>
       </div>
     </div>
   </div>

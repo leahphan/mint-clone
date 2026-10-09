@@ -1,0 +1,15 @@
+<%# locals: (month:, budget_progress:) -%>
+<%= render layout: "shared/panel", locals: { title: "Budgets", meta: link_to("Manage", budgets_path, class: "btn-link") } do %>
+  <% if budget_progress.any? %>
+    <% income, expenses = budget_progress.partition(&:income?) %>
+    <% [ [ "Income", income ], [ "Expenses", expenses ] ].each do |heading, rows| %>
+      <% next if rows.empty? %>
+      <h3 class="border-b border-mint-line/60 bg-mint-page/60 px-3 py-1 text-[11px] font-bold tracking-wide text-mint-muted uppercase"><%= heading %></h3>
+      <ul class="divide-y divide-mint-line/60 text-[13px]">
+        <%= render partial: "budget_row", collection: rows, as: :progress %>
+      </ul>
+    <% end %>
+  <% else %>
+    <p class="panel-empty">No budgets for <%= month.strftime("%B") %>. <%= link_to "Create a budget", new_budget_path, class: "btn-link" %></p>
+  <% end %>
+<% end %>

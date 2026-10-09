@@ -1,0 +1,30 @@
+<%# locals: (progress:) -%>
+<% bar_color = if progress.income? then "bg-mint-blue" elsif progress.status == :over_budget then "bg-mint-negative" else "bg-mint-green" end %>
+<li class="space-y-1.5 px-3 py-2">
+  <div class="flex items-center justify-between gap-3">
+    <span class="truncate font-semibold"><%= progress.category.name %></span>
+    <span class="tabular-nums text-mint-muted"><%= progress.percent_used %>%</span>
+  </div>
+  <div class="h-2 overflow-hidden rounded-full bg-mint-page" role="progressbar"
+    aria-label="<%= progress.category.name %> budget" aria-valuemin="0" aria-valuemax="100"
+    aria-valuenow="<%= progress.bar_percent %>" aria-valuetext="<%= progress.percent_used %>% <%= progress.income? ? "of goal" : "spent" %>">
+    <div class="h-full rounded-full <%= bar_color %>" style="width: <%= progress.bar_percent %>%"></div>
+  </div>
+  <div class="flex items-center justify-between gap-3 text-xs text-mint-muted">
+    <% if progress.income? %>
+      <span class="tabular-nums"><%= number_to_currency progress.actual %> earned of <%= number_to_currency progress.amount %> goal</span>
+      <% if progress.status == :goal_met %>
+        <span class="font-semibold text-mint-green">Goal met</span>
+      <% else %>
+        <span class="tabular-nums"><%= number_to_currency progress.remaining %> to goal</span>
+      <% end %>
+    <% else %>
+      <span class="tabular-nums"><%= number_to_currency progress.actual %> spent of <%= number_to_currency progress.amount %></span>
+      <% if progress.status == :over_budget %>
+        <span class="font-semibold tabular-nums text-mint-negative"><%= number_to_currency(-progress.remaining) %> over budget</span>
+      <% else %>
+        <span class="tabular-nums"><%= number_to_currency progress.remaining %> remaining</span>
+      <% end %>
+    <% end %>
+  </div>
+</li>

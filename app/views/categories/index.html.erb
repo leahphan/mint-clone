@@ -7,7 +7,13 @@
     <% if @categories.any? %>
       <ul class="panel-list">
         <% @categories.each do |category| %>
-          <li><%= category.name %></li>
+          <li>
+            <span class="truncate font-semibold"><%= category.name %></span>
+            <span class="flex shrink-0 items-center gap-3">
+              <span class="text-mint-muted"><%= category.category_type.humanize %></span>
+              <%= link_to "Edit", edit_category_path(category), class: "btn-link" %>
+            </span>
+          </li>
         <% end %>
       </ul>
     <% else %>
@@ -16,15 +22,6 @@
   <% end %>
 
   <%= render layout: "shared/panel", locals: { title: "New category", css: "self-start" } do %>
-    <%= form_with model: @category, class: "panel-body space-y-4" do |form| %>
-      <%= render "shared/form_errors", record: @category %>
-
-      <div>
-        <%= form.label :name, class: "form-label" %>
-        <%= form.text_field :name, class: "form-input", placeholder: "e.g. Groceries" %>
-      </div>
-
-      <%= form.submit "Create category", class: "btn btn-primary w-full" %>
-    <% end %>
+    <%= render "form", category: @category, submit_label: "Create category" %>
   <% end %>
 </div>
