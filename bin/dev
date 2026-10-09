@@ -1,2 +1,16 @@
-#!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+#!/usr/bin/env sh
+set -eu
+
+bin/rails 'tailwindcss:watch[always]' &
+tailwind_pid=$!
+
+cleanup() {
+  kill "$tailwind_pid" 2>/dev/null || true
+  wait "$tailwind_pid" 2>/dev/null || true
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+bin/rails server "$@"
