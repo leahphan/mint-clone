@@ -2,8 +2,10 @@ require "test_helper"
 
 class ImportsTest < ActionDispatch::IntegrationTest
   setup do
-    @chequing = create(:account, name: "TD Chequing", account_type: "chequing")
-    @visa = create(:account, name: "TD Visa", account_type: "credit_card")
+    @user = create(:user)
+    sign_in_as @user
+    @chequing = create(:account, user: @user, name: "TD Chequing", account_type: "chequing")
+    @visa = create(:account, user: @user, name: "TD Visa", account_type: "credit_card")
   end
 
   test "imports a recognized export straight away and shows its transactions" do

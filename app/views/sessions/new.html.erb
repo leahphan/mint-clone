@@ -1,0 +1,21 @@
+<% content_for :title, "Sign in" %>
+
+<div class="mx-auto max-w-sm">
+  <%= render "shared/page_header", title: "Sign in" %>
+
+  <%= render layout: "shared/card" do %>
+    <%= form_with url: session_path, class: "space-y-5 p-5" do |form| %>
+      <div>
+        <%= form.label :email_address, "Email", class: "form-label" %>
+        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", value: params[:email_address], class: "form-input" %>
+      </div>
+
+      <div>
+        <%= form.label :password, class: "form-label" %>
+        <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "form-input" %>
+      </div>
+
+      <%= form.submit "Sign in", class: "btn btn-primary w-full" %>
+    <% end %>
+  <% end %>
+</div>

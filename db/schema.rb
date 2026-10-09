@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_180650) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -20,6 +20,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.decimal "opening_balance", precision: 12, scale: 2, default: "0.0", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_accounts_on_user_id"
   end
 
   create_table "budgets", force: :cascade do |t|
@@ -36,7 +38,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "category_type", null: false
-    t.index "lower((name)::text)", name: "index_categories_on_lower_name", unique: true
+    t.bigint "user_id", null: false
+    t.index "user_id, lower((name)::text)", name: "index_categories_on_user_id_and_lower_name", unique: true
+    t.index ["id", "user_id"], name: "index_categories_on_id_and_user_id", unique: true
   end
 
   create_table "imports", force: :cascade do |t|
@@ -60,8 +64,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
     t.check_constraint "(status::text = 'pending'::text) = (content IS NOT NULL)", name: "imports_content_only_while_pending"
     t.check_constraint "confidence >= 0::numeric AND confidence <= 1::numeric", name: "imports_confidence_range"
     t.check_constraint "rows_imported >= 0 AND rows_skipped >= 0 AND rows_failed >= 0", name: "imports_counts_not_negative"
-    t.check_constraint "schema_source::text = ANY (ARRAY['known'::character varying, 'heuristic'::character varying, 'ai'::character varying, 'user'::character varying]::text[])", name: "imports_schema_source_valid"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'completed'::character varying]::text[])", name: "imports_status_valid"
+    t.check_constraint "schema_source::text = ANY (ARRAY['known'::character varying::text, 'heuristic'::character varying::text, 'ai'::character varying::text, 'user'::character varying::text])", name: "imports_schema_source_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'completed'::character varying::text])", name: "imports_status_valid"
   end
 
   create_table "merchants", force: :cascade do |t|
@@ -70,8 +74,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
     t.bigint "category_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["category_id"], name: "index_merchants_on_category_id"
-    t.index ["key"], name: "index_merchants_on_key", unique: true
+    t.index ["user_id", "key"], name: "index_merchants_on_user_id_and_key", unique: true
+  end
+
+  create_table "sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "ip_address"
+    t.string "user_agent"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
   create_table "transactions", force: :cascade do |t|
@@ -93,12 +107,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_120001) do
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"
     t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
-    t.check_constraint "categorization_source::text = ANY (ARRAY['learned'::character varying, 'ai'::character varying, 'manual'::character varying]::text[])", name: "transactions_categorization_source_valid"
+    t.check_constraint "categorization_source::text = ANY (ARRAY['learned'::character varying::text, 'ai'::character varying::text, 'manual'::character varying::text])", name: "transactions_categorization_source_valid"
   end
 
+  create_table "users", force: :cascade do |t|
+    t.string "email_address", null: false
+    t.string "password_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+  end
+
+  add_foreign_key "accounts", "users"
   add_foreign_key "budgets", "categories"
+  add_foreign_key "categories", "users"
   add_foreign_key "imports", "accounts"
-  add_foreign_key "merchants", "categories"
+  add_foreign_key "merchants", "categories", column: ["category_id", "user_id"], primary_key: ["id", "user_id"]
+  add_foreign_key "merchants", "users"
+  add_foreign_key "sessions", "users"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "imports"

@@ -2,8 +2,10 @@ require "test_helper"
 
 class TransactionCategoriesTest < ActionDispatch::IntegrationTest
   setup do
-    @account = create(:account)
-    @groceries = create(:category, name: "Groceries")
+    @user = create(:user)
+    sign_in_as @user
+    @account = create(:account, user: @user)
+    @groceries = create(:category, user: @user, name: "Groceries")
   end
 
   test "creates a transaction with a category" do

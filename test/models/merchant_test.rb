@@ -26,12 +26,30 @@ class MerchantTest < ActiveSupport::TestCase
     assert_equal "*", Merchant.key_for("*")
   end
 
-  test "for_description creates a merchant with a display name, then finds it" do
-    merchant = Merchant.for_description("7-ELEVEN 34512")
-    assert_equal [ "7-ELEVEN 34512", "7-Eleven 34512" ], [ merchant.key, merchant.name ]
+  test "for_description creates the user's merchant with a display name, then finds it" do
+    user = create(:user)
+    merchant = user.merchants.for_description("7-ELEVEN 34512")
+    assert_equal [ "7-ELEVEN 34512", "7-Eleven 34512", user ], [ merchant.key, merchant.name, merchant.user ]
 
     assert_no_difference "Merchant.count" do
-      assert_equal merchant, Merchant.for_description("7-eleven 34512")
+      assert_equal merchant, user.merchants.for_description("7-eleven 34512")
     end
+  end
+
+  test "each user has their own merchant for the same key" do
+    user = create(:user)
+    theirs = create(:merchant, key: "LOBLAWS")
+
+    assert_difference "Merchant.count", 1 do
+      assert_not_equal theirs, user.merchants.for_description("LOBLAWS")
+    end
+    assert_raises(ActiveRecord::RecordNotUnique) { create(:merchant, user: user, key: "LOBLAWS") }
+  end
+
+  test "the database rejects a learned category that belongs to another user" do
+    merchant = create(:merchant)
+
+    assert_raises(ActiveRecord::InvalidForeignKey) { merchant.update!(category: create(:category)) }
+    assert merchant.update!(category: create(:category, user: merchant.user))
   end
 end

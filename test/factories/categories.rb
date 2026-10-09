@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :category do
+    user
     sequence(:name) { |n| "Category #{n}" }
     category_type { "expense" }
 

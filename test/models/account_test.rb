@@ -1,8 +1,9 @@
 require "test_helper"
 
 class AccountTest < ActiveSupport::TestCase
-  test "valid with a name and account type" do
-    assert Account.new(name: "Savings", account_type: "savings").valid?
+  test "valid with a user, name and account type" do
+    assert Account.new(user: build(:user), name: "Savings", account_type: "savings").valid?
+    assert_not build(:account, user: nil).valid?
   end
 
   test "requires a name" do

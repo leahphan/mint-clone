@@ -1,6 +1,11 @@
 require "test_helper"
 
 class DashboardTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create(:user)
+    sign_in_as @user
+  end
+
   test "is the home page" do
     get root_path
     assert_response :success
@@ -9,10 +14,10 @@ class DashboardTest < ActionDispatch::IntegrationTest
 
   test "shows accounts with balances, totals, recent transactions and this month's spending" do
     travel_to Date.new(2026, 9, 25) do
-      chequing = create(:account, name: "Everyday Chequing", account_type: "chequing")
-      savings = create(:account, name: "Rainy Day", account_type: "savings")
-      visa = create(:account, name: "Visa", account_type: "credit_card")
-      groceries = create(:category, name: "Groceries")
+      chequing = create(:account, user: @user, name: "Everyday Chequing", account_type: "chequing")
+      savings = create(:account, user: @user, name: "Rainy Day", account_type: "savings")
+      visa = create(:account, user: @user, name: "Visa", account_type: "credit_card")
+      groceries = create(:category, user: @user, name: "Groceries")
 
       create(:transaction, account: chequing, transaction_date: Date.new(2026, 9, 1), description: "Payroll", amount: "2500.00")
       create(:transaction, account: chequing, transaction_date: Date.new(2026, 9, 20), description: "Loblaws", amount: "-54.32", category: groceries)
@@ -46,7 +51,7 @@ class DashboardTest < ActionDispatch::IntegrationTest
   end
 
   test "shows at most 10 recent transactions" do
-    account = create(:account)
+    account = create(:account, user: @user)
     12.times { |day| create(:transaction, account: account, transaction_date: Date.current - day) }
 
     get root_path
@@ -54,8 +59,8 @@ class DashboardTest < ActionDispatch::IntegrationTest
   end
 
   test "totals include opening balances" do
-    create(:account, name: "Chequing", opening_balance: "1000.00")
-    visa = create(:account, name: "Visa", account_type: "credit_card", opening_balance: "-500.00")
+    create(:account, user: @user, name: "Chequing", opening_balance: "1000.00")
+    visa = create(:account, user: @user, name: "Visa", account_type: "credit_card", opening_balance: "-500.00")
     create(:transaction, account: visa, amount: "-120.50")
 
     get root_path
@@ -67,19 +72,20 @@ class DashboardTest < ActionDispatch::IntegrationTest
 
   test "shows this month's progress for income and expense budgets" do
     travel_to Date.new(2026, 9, 25) do
-      groceries = create(:category, name: "Groceries")
-      dining = create(:category, name: "Dining")
-      paycheque = create(:category, :income, name: "Paycheque")
-      freelance = create(:category, :income, name: "Freelance")
+      groceries = create(:category, user: @user, name: "Groceries")
+      dining = create(:category, user: @user, name: "Dining")
+      paycheque = create(:category, :income, user: @user, name: "Paycheque")
+      freelance = create(:category, :income, user: @user, name: "Freelance")
       create(:budget, category: groceries, amount: "100.00")
       create(:budget, category: dining, amount: "40.00")
       create(:budget, category: paycheque, amount: "3000.00")
       create(:budget, category: freelance, amount: "500.00")
-      create(:transaction, category: groceries, amount: "-100.00")
-      create(:transaction, category: groceries, amount: "25.00") # refund
-      create(:transaction, category: dining, amount: "-52.00")
-      create(:transaction, category: paycheque, amount: "1200.00")
-      create(:transaction, category: freelance, amount: "650.00")
+      account = create(:account, user: @user)
+      create(:transaction, account: account, category: groceries, amount: "-100.00")
+      create(:transaction, account: account, category: groceries, amount: "25.00") # refund
+      create(:transaction, account: account, category: dining, amount: "-52.00")
+      create(:transaction, account: account, category: paycheque, amount: "1200.00")
+      create(:transaction, account: account, category: freelance, amount: "650.00")
 
       get root_path
 
@@ -100,7 +106,7 @@ class DashboardTest < ActionDispatch::IntegrationTest
   end
 
   test "suggests creating a budget when there are none" do
-    create(:account)
+    create(:account, user: @user)
 
     get root_path
     assert_select "a[href=?]", new_budget_path, text: "Create a budget"
@@ -108,13 +114,13 @@ class DashboardTest < ActionDispatch::IntegrationTest
 
   test "loads in a fixed number of queries regardless of how many records exist" do
     2.times do |n|
-      account = create(:account, name: "Account #{n}", account_type: n.even? ? "chequing" : "credit_card")
-      category = create(:category)
+      account = create(:account, user: @user, name: "Account #{n}", account_type: n.even? ? "chequing" : "credit_card")
+      category = create(:category, user: @user)
       create(:budget, category: category)
       3.times { create(:transaction, account: account, category: category) }
     end
-    # Accounts with balances, spending by category, recent transactions + their accounts and categories,
-    # budgets with their categories, and spending for all budgets.
-    assert_queries_count(7) { get root_path }
+    # The signed-in session and its user, accounts with balances, spending by category, recent transactions
+    # + their accounts and categories, budgets with their categories, and spending for all budgets.
+    assert_queries_count(9) { get root_path }
   end
 end

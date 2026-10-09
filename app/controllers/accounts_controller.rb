@@ -1,19 +1,19 @@
 class AccountsController < ApplicationController
   def index
-    @accounts = Account.with_balances.order(:name).to_a
+    @accounts = Current.user.accounts.with_balances.order(:name).to_a
   end
 
   def show
-    @account = Account.find(params[:id])
+    @account = Current.user.accounts.find(params[:id])
     @transactions = @account.transactions.includes(:category).newest_first
   end
 
   def new
-    @account = Account.new
+    @account = Current.user.accounts.new
   end
 
   def create
-    @account = Account.new(account_params)
+    @account = Current.user.accounts.new(account_params)
 
     if @account.save
       redirect_to @account, notice: "Account created."
@@ -23,11 +23,11 @@ class AccountsController < ApplicationController
   end
 
   def edit
-    @account = Account.find(params[:id])
+    @account = Current.user.accounts.find(params[:id])
   end
 
   def update
-    @account = Account.find(params[:id])
+    @account = Current.user.accounts.find(params[:id])
 
     if @account.update(account_params)
       redirect_to @account, notice: "Account updated."

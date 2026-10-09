@@ -30,6 +30,13 @@ A personal finance web app inspired by Mint.com. Rails 8.1 monolith on PostgreSQ
 - Default style is dense, like the dashboard: `panel` + `data-table-compact` for lists and tables, `stat-strip` for headline figures. The transaction and import forms still use the roomier `card`.
 - The dashboard (`DashboardController#index`, the root) owns all cross-account queries. Account, transaction, category, and import pages only load their own records. An account's balance is the sum of its transactions: use `Account.with_balances` when listing accounts, not `account.balance` in a loop.
 
+## Users and ownership
+
+- Rails 8's built-in authentication: every controller requires a signed-in user (`Authentication` concern, `Current.user`). No sign-up or email reset; `bin/rails users:set_password EMAIL=…` creates users and changes passwords.
+- Accounts, categories and merchants have a `user_id`; transactions and imports belong to a user through their account, budgets through their category. Reach records through the user (`Current.user.accounts.find(id)`, never `Account.find(id)`), so another user's ids are a 404. Services and jobs take the user as an argument; they don't read `Current`.
+- Merchants are private per user (`user.merchants.for_description`). A merchant's `category_id` is that user's learned category; the database requires it to be one of the same user's categories. `Transaction#description` keeps the raw bank text; the merchant's `key`/`name` are the normalized identity.
+- In tests, integration tests call `sign_in_as(user)`. Factories create a new user per record, so pass `user:` (or `account:`) explicitly when records must belong to the same user.
+
 ## Environment
 
 Ruby 4.0.3 via rbenv. Run commands from the project root — the parent directory pins an old Ruby. Local PostgreSQL databases: `mint_development`, `mint_test`.
@@ -45,6 +52,7 @@ When the user says "put this feature on staging": make sure tests and RuboCop pa
 ```bash
 bin/dev                                      # dev server + Tailwind watcher (foreman, Procfile.dev)
 bin/rails db:migrate                         # commit db/schema.rb with the migration
+bin/rails users:set_password EMAIL=you@example.com  # create a user or change their password
 bin/rails test                               # all tests (Minitest)
 bin/rails test test/models/foo_test.rb:42    # single file or test
 bin/rails test:system                        # system tests (not included in bin/rails test)

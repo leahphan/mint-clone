@@ -1,26 +1,26 @@
 class CategoriesController < ApplicationController
   def index
-    @categories = Category.order(:name)
-    @category = Category.new
+    @categories = Current.user.categories.order(:name)
+    @category = Current.user.categories.new
   end
 
   def create
-    @category = Category.new(category_params)
+    @category = Current.user.categories.new(category_params)
 
     if @category.save
       redirect_to categories_path, notice: "Category created."
     else
-      @categories = Category.order(:name)
+      @categories = Current.user.categories.order(:name)
       render :index, status: :unprocessable_entity
     end
   end
 
   def edit
-    @category = Category.find(params[:id])
+    @category = Current.user.categories.find(params[:id])
   end
 
   def update
-    @category = Category.find(params[:id])
+    @category = Current.user.categories.find(params[:id])
 
     if @category.update(category_params)
       redirect_to categories_path, notice: "Category updated."

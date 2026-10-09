@@ -1,30 +1,33 @@
-# Categorizes a batch of transactions that have no category. Each merchant's
-# learned category is used first. For merchants without one, the classifier
-# (if AI categorization is enabled) is asked once per merchant, and a valid,
-# confident answer is learned so the merchant isn't sent to it again.
+# Categorizes a batch of one user's transactions that have no category. Each of
+# the user's merchants' learned category is used first. For merchants without
+# one, the classifier (if AI categorization is enabled) is asked once per
+# merchant, offered only this user's categories, and a valid, confident answer
+# is learned on the user's merchant so it isn't sent to the classifier again.
 class TransactionCategorizer
   MIN_CONFIDENCE = 0.8
 
-  # transactions is a relation; only its uncategorized rows are changed.
-  def self.call(transactions, classifier: default_classifier)
-    new(transactions, classifier).call
+  # transactions is a relation; only its uncategorized rows in the user's accounts are changed.
+  def self.call(transactions, user:, classifier: default_classifier)
+    new(transactions, user, classifier).call
   end
 
   def self.default_classifier
     OllamaClassifier.new if ENV["AI_CATEGORIZATION_ENABLED"] == "true"
   end
 
-  def initialize(transactions, classifier)
-    @transactions = transactions.where(category_id: nil).to_a
+  def initialize(transactions, user, classifier)
+    # update_all below skips validations, so only the user's own transactions are touched.
+    @transactions = transactions.where(category_id: nil, account: user.accounts).to_a
+    @user = user
     @classifier = classifier
   end
 
   def call
     by_merchant_key = transactions.group_by { |transaction| Merchant.key_for(transaction.description) }
-    known_merchants = Merchant.where(key: by_merchant_key.keys).index_by(&:key)
+    known_merchants = user.merchants.where(key: by_merchant_key.keys).index_by(&:key)
 
     by_merchant_key.each do |key, group|
-      merchant = known_merchants[key] || Merchant.for_description(group.first.description)
+      merchant = known_merchants[key] || user.merchants.for_description(group.first.description)
       category_id, source = learned_category(merchant) || classify(merchant, group.first)
 
       Transaction.where(id: group.map(&:id)).update_all(
@@ -34,7 +37,7 @@ class TransactionCategorizer
   end
 
   private
-    attr_reader :transactions, :classifier
+    attr_reader :transactions, :user, :classifier
 
     def learned_category(merchant)
       [ merchant.category_id, "learned" ] if merchant.category_id
@@ -71,7 +74,7 @@ class TransactionCategorizer
     end
 
     def categories
-      @categories ||= Category.order(:name).map do |category|
+      @categories ||= user.categories.order(:name).map do |category|
         { id: category.id, name: category.name, type: category.category_type }
       end
     end

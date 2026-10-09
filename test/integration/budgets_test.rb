@@ -1,8 +1,13 @@
 require "test_helper"
 
 class BudgetsTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create(:user)
+    sign_in_as @user
+  end
+
   test "lists budgets" do
-    create(:budget, category: create(:category, name: "Groceries"), amount: "450.00")
+    create(:budget, category: create(:category, user: @user, name: "Groceries"), amount: "450.00")
 
     get budgets_path
     assert_response :success
@@ -10,7 +15,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "creates a budget" do
-    groceries = create(:category, name: "Groceries")
+    groceries = create(:category, user: @user, name: "Groceries")
 
     assert_difference "Budget.count", 1 do
       post budgets_path, params: { budget: { category_id: groceries.id, amount: "450.00" } }
@@ -20,7 +25,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the form when the amount is invalid" do
-    groceries = create(:category, name: "Groceries")
+    groceries = create(:category, user: @user, name: "Groceries")
 
     assert_no_difference "Budget.count" do
       post budgets_path, params: { budget: { category_id: groceries.id, amount: "0" } }
@@ -30,9 +35,9 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "shows an error when a budget for the category is created concurrently" do
-    groceries = create(:category, name: "Groceries")
+    groceries = create(:category, user: @user, name: "Groceries")
     create(:budget, category: groceries)
-    create(:category, name: "Dining")
+    create(:category, user: @user, name: "Dining")
     racing =Budget.new(category: groceries, amount: "450.00")
 
     racing.stub(:valid?, true) do
@@ -47,9 +52,9 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "new budget form only offers non-transfer categories without a budget" do
-    create(:budget, category: create(:category, name: "Groceries"))
-    create(:category, name: "Dining")
-    create(:category, name: "Credit Card Payment", category_type: "transfer")
+    create(:budget, category: create(:category, user: @user, name: "Groceries"))
+    create(:category, user: @user, name: "Dining")
+    create(:category, user: @user, name: "Credit Card Payment", category_type: "transfer")
 
     get new_budget_path
     options = css_select("select[name='budget[category_id]'] option").map(&:text).reject(&:blank?)
@@ -57,7 +62,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "new budget page explains when every category has a budget" do
-    create(:budget)
+    create(:budget, category: create(:category, user: @user))
 
     get new_budget_path
     assert_select "p", text: "Every category has a budget"
@@ -65,7 +70,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "edits a budget's amount" do
-    budget = create(:budget, amount: "100.00")
+    budget = create(:budget, category: create(:category, user: @user), amount: "100.00")
 
     get edit_budget_path(budget)
     assert_response :success
@@ -76,7 +81,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the edit form when the amount is invalid" do
-    budget = create(:budget, amount: "100.00")
+    budget = create(:budget, category: create(:category, user: @user), amount: "100.00")
 
     patch budget_path(budget), params: { budget: { amount: "-5" } }
     assert_response :unprocessable_entity
@@ -84,7 +89,7 @@ class BudgetsTest < ActionDispatch::IntegrationTest
   end
 
   test "removes a budget" do
-    budget = create(:budget)
+    budget = create(:budget, category: create(:category, user: @user))
 
     assert_difference "Budget.count", -1 do
       delete budget_path(budget)

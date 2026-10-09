@@ -6,8 +6,9 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
   CHEQUING_LINES = 71
 
   setup do
-    @chequing = create(:account, name: "TD Chequing", account_type: "chequing")
-    @visa = create(:account, name: "TD Visa", account_type: "credit_card")
+    @user = create(:user)
+    @chequing = create(:account, user: @user, name: "TD Chequing", account_type: "chequing")
+    @visa = create(:account, user: @user, name: "TD Visa", account_type: "credit_card")
   end
 
   # --- TD exports ---
@@ -91,7 +92,7 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
 
   test "duplicates are scoped to the account" do
     import_into(@chequing, fixture_upload("td_chequing.csv"))
-    savings = create(:account, name: "Savings", account_type: "savings")
+    savings = create(:account, user: @user, name: "Savings", account_type: "savings")
 
     assert_equal CHEQUING_LINES, import_into(savings, fixture_upload("td_chequing.csv")).rows_imported
   end
@@ -284,8 +285,8 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
   # --- Categorization ---
 
   test "categorizes only the new rows; an export of duplicates creates no work" do
-    groceries = create(:category, name: "Groceries")
-    create(:merchant, key: "KAFU SEMO AND _F", category: groceries)
+    groceries = create(:category, user: @user, name: "Groceries")
+    create(:merchant, user: @user, key: "KAFU SEMO AND _F", category: groceries)
 
     first = nil
     perform_enqueued_jobs { first = import_into(@chequing, fixture_upload("td_chequing.csv", lines: 0..9)) }
