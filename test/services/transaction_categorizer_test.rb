@@ -128,6 +128,19 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
     assert_equal [ @coffee, "manual" ], [ transaction.reload.category, transaction.categorization_source ]
   end
 
+  test "a category the user picks while the batch is running isn't overwritten, on the transaction or its merchant" do
+    transaction = create(:transaction, account: @account, description: "SQ *PILOT COFFEE")
+    classifier = FakeClassifier.new do
+      SaveTransaction.call(Transaction.find(transaction.id), category_id: @groceries.id)
+      confident_answer(@coffee)
+    end
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
+
+    assert_equal [ @groceries, "manual" ], [ transaction.reload.category, transaction.categorization_source ]
+    assert_equal @groceries, transaction.merchant.category
+  end
+
   test "another user's learned merchant doesn't categorize this user's transaction" do
     other_user = create(:user)
     create(:merchant, user: other_user, key: "COSTCO WHOLESALE", category: create(:category, user: other_user))

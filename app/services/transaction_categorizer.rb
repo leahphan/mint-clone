@@ -30,7 +30,8 @@ class TransactionCategorizer
       merchant = known_merchants[key] || user.merchants.for_description(group.first.description)
       category_id, source = learned_category(merchant) || classify(merchant, group.first)
 
-      Transaction.where(id: group.map(&:id)).update_all(
+      # Still uncategorized: the user may have picked a category while this batch was running.
+      Transaction.where(id: group.map(&:id), category_id: nil).update_all(
         merchant_id: merchant.id, category_id: category_id, categorization_source: source, updated_at: Time.current
       )
     end
@@ -49,7 +50,9 @@ class TransactionCategorizer
       answer = valid_answer(ask_classifier(transaction))
       return unless answer
 
-      merchant.update!(category_id: answer[:category_id], name: answer[:name])
+      # Only if nothing was learned meanwhile, e.g. from the user's own pick while the classifier was answering.
+      user.merchants.where(id: merchant.id, category_id: nil)
+        .update_all(category_id: answer[:category_id], name: answer[:name], updated_at: Time.current)
       [ answer[:category_id], "ai" ]
     end
 
