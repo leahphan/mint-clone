@@ -46,11 +46,14 @@ class TransactionCategoriesTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
-  test "does not edit a transaction from another account" do
-    other_transaction = create(:transaction)
+  test "does not edit a transaction from the user's other account" do
+    other_transaction = create(:transaction, account: create(:account, user: @user, name: "Visa"), description: "Visa purchase")
 
     get edit_account_transaction_path(@account, other_transaction)
     assert_response :not_found
+    patch account_transaction_path(@account, other_transaction), params: { transaction: { description: "Moved" } }
+    assert_response :not_found
+    assert_equal "Visa purchase", other_transaction.reload.description
   end
 
   test "account page shows the category or Uncategorized" do

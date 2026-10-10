@@ -29,8 +29,10 @@ module Authentication
       Session.find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
     end
 
+    # Only a page can be returned to: a form submission's URL (DELETE /session, PATCH /categories/1)
+    # has no GET route, so after signing in from one of those, go to the dashboard.
     def request_authentication
-      session[:return_to_after_authenticating] = request.url
+      session[:return_to_after_authenticating] = request.url if request.get? || request.head?
       redirect_to new_session_path
     end
 

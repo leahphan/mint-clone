@@ -2,6 +2,8 @@ require "test_helper"
 
 class CategorizeImportJobTest < ActiveJob::TestCase
   test "categorizes the import's transactions from the account owner's learned merchants" do
+    someone_else = create(:user)
+    create(:merchant, user: someone_else, key: "LOBLAWS", category: create(:category, user: someone_else))
     user = create(:user)
     groceries = create(:category, user: user, name: "Groceries")
     create(:merchant, user: user, key: "LOBLAWS", category: groceries)

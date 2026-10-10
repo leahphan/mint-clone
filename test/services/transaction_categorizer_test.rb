@@ -1,7 +1,7 @@
 require "test_helper"
 
 class TransactionCategorizerTest < ActiveSupport::TestCase
-  # Stands in for the AI user: @user, classifier: returns a canned answer and records each call.
+  # Stands in for the AI classifier: returns a canned answer and records each call.
   class FakeClassifier
     attr_reader :calls
 

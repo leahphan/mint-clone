@@ -33,7 +33,7 @@ A personal finance web app inspired by Mint.com. Rails 8.1 monolith on PostgreSQ
 ## Users and ownership
 
 - Rails 8's built-in authentication: every controller requires a signed-in user (`Authentication` concern, `Current.user`). No sign-up or email reset; `bin/rails users:set_password EMAIL=…` creates users and changes passwords.
-- Accounts, categories and merchants have a `user_id`; transactions and imports belong to a user through their account, budgets through their category. Reach records through the user (`Current.user.accounts.find(id)`, never `Account.find(id)`), so another user's ids are a 404. Services and jobs take the user as an argument; they don't read `Current`.
+- Accounts, categories and merchants have a `user_id`; transactions and imports belong to a user through their account, budgets through their category. Reach records through the user (`Current.user.accounts.find(id)`, never `Account.find(id)`), so another user's ids are a 404. Services and jobs never read `Current`: they take the user as an argument or reach it through the account they're given (`transaction.account.user`).
 - Merchants are private per user (`user.merchants.for_description`). A merchant's `category_id` is that user's learned category; the database requires it to be one of the same user's categories. `Transaction#description` keeps the raw bank text; the merchant's `key`/`name` are the normalized identity.
 - In tests, integration tests call `sign_in_as(user)`. Factories create a new user per record, so pass `user:` (or `account:`) explicitly when records must belong to the same user.
 

@@ -21,6 +21,19 @@ class SessionsTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "a form submitted after the session was revoked goes to the dashboard after signing in again" do
+    category = create(:category, user: @user, name: "Groceries")
+    sign_in_as @user
+    @user.sessions.destroy_all
+
+    patch category_path(category), params: { category: { name: "Food" } }
+    assert_redirected_to new_session_path
+    assert_equal "Groceries", category.reload.name
+
+    post session_path, params: { email_address: "leah@example.com", password: "correct horse battery staple" }
+    assert_redirected_to root_url
+  end
+
   test "signing in goes to the dashboard" do
     post session_path, params: { email_address: "leah@example.com", password: "correct horse battery staple" }
 
