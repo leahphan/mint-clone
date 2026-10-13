@@ -1,4 +1,4 @@
-<%# locals: (transactions:) -%>
+<%# locals: (transactions:, categorizing_import_ids:) -%>
 <%= render layout: "shared/panel", locals: { title: "Recent transactions", css: "min-w-0" } do %>
   <% if transactions.any? %>
     <div class="overflow-x-auto">
@@ -18,7 +18,7 @@
               <td class="whitespace-nowrap text-mint-muted"><%= short_date transaction.transaction_date %></td>
               <td class="font-semibold"><span class="block max-w-44 truncate" title="<%= transaction.description %>"><%= transaction.description %></span></td>
               <td><%= link_to transaction.account.name, transaction.account, class: "btn-link block max-w-36 truncate font-normal" %></td>
-              <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-32 truncate"><%= transaction.category&.name || "Uncategorized" %></span></td>
+              <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-32 truncate"><%= category_label transaction, categorizing_import_ids %></span></td>
               <td class="text-right"><%= amount_tag transaction.amount %></td>
             </tr>
           <% end %>

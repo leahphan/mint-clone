@@ -10,6 +10,7 @@ class DashboardController < ApplicationController
     @net_worth = @accounts.sum(0, &:balance)
 
     @recent_transactions = Current.user.transactions.includes(:account, :category).newest_first.limit(RECENT_TRANSACTIONS_LIMIT).to_a
+    @categorizing_import_ids = Current.user.imports.categorizing.ids
     @spending_month = Date.current
     @spending_by_category = Current.user.transactions.spending_by_category(@spending_month)
     @budget_progress = BudgetProgress.call(Current.user, @spending_month)

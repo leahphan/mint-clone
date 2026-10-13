@@ -96,6 +96,19 @@ columns, and a confirmed layout is remembered for that account.
 - AI schema detection is off unless `AI_CSV_SCHEMA_ENABLED=true` (uses the `OLLAMA_*` settings).
   It only sees a redacted description of the file: column statistics and cell kinds, never values.
 
+### Categorizing imported transactions
+
+New transactions are categorized by merchant, before the account page shows them:
+
+1. **Your merchants.** A category you pick for a transaction is remembered for its merchant, and
+   so is a confident AI answer.
+2. **The starter list.** Common merchants (Loblaws, Tim Hortons, Petro-Canada, …) get their usual
+   category from `config/starter_merchants.yml`, if you have a category by that name.
+3. **The AI**, only if `AI_CATEGORIZATION_ENABLED=true`. The remaining merchants are sent to Ollama
+   Cloud in the background, one transaction's description and amount per merchant and up to 25
+   merchants per request. Until it answers, they show as "Categorizing…", and the page updates by
+   itself.
+
 ## Scrubbing bank CSVs
 
 `bin/scrub-bank-csv` makes a copy of a real bank CSV that is safe to share or to use as a test

@@ -8,7 +8,8 @@
 # date, amount and description; see #existing_match_keys) is imported but flagged
 # as a possible duplicate, so a real repeat purchase is never dropped.
 # Rows that can't be read are recorded on the import; the rest still import.
-# Only new transactions are categorized.
+# Only new transactions are categorized: from known merchants before the user sees them,
+# then by the AI classifier in the background (CategorizeImportJob) if it's enabled.
 class TransactionCsvImporter
   MAX_FILE_SIZE = 1.megabyte
   CHECKSUM_INDEX = "index_imports_on_account_id_and_checksum_completed"
@@ -120,13 +121,24 @@ class TransactionCsvImporter
     # categorizes the new transactions. The block returns whether it imported.
     def import_rows(import)
       imported = account.with_lock { yield }
-      CategorizeImportJob.perform_later(import) if imported && import.rows_imported.positive?
+      categorize(import) if imported && import.rows_imported.positive?
     rescue ActiveRecord::RecordNotUnique => error
       raise unless error.message.include?(CHECKSUM_INDEX)
 
       # The same file finished importing in another request meanwhile.
       import.reload if import.persisted?
       add_already_imported_error(import)
+    end
+
+    # Merchants the user has categorized before, and common ones on the starter list, are quick
+    # lookups, so they're categorized right away. The rest wait for the AI classifier, and the
+    # import shows as categorizing until it's done.
+    def categorize(import)
+      TransactionCategorizer.call(import.transactions, user: account.user, classifier: nil)
+      return unless TransactionCategorizer.ai_enabled? && import.transactions.where(category_id: nil).exists?
+
+      import.update!(categorizing_since: Time.current)
+      CategorizeImportJob.perform_later(import)
     end
 
     def complete(import, table, schema, source:, confidence:)

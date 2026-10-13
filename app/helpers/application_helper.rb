@@ -21,6 +21,11 @@ module ApplicationHelper
     tag.span number_to_currency(amount), class: "#{color} font-semibold tabular-nums whitespace-nowrap"
   end
 
+  # A transaction's category name, or "Categorizing…" while its import waits for the AI classifier.
+  def category_label(transaction, categorizing_import_ids)
+    transaction.category&.name || (categorizing_import_ids.include?(transaction.import_id) ? "Categorizing…" : "Uncategorized")
+  end
+
   # "Sep 1" this year, "Sep 1, 2025" otherwise.
   def short_date(date)
     date.strftime(date.year == Date.current.year ? "%b %-d" : "%b %-d, %Y")

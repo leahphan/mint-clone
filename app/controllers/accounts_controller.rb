@@ -6,6 +6,7 @@ class AccountsController < ApplicationController
   def show
     @account = Current.user.accounts.find(params[:id])
     @transactions = @account.transactions.includes(:category).newest_first
+    @categorizing_import_ids = @account.imports.categorizing.ids
   end
 
   def new

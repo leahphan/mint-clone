@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_180650) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -59,6 +59,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_180650) do
     t.integer "rows_skipped", default: 0, null: false
     t.integer "rows_failed", default: 0, null: false
     t.jsonb "failed_rows", default: [], null: false
+    t.datetime "categorizing_since"
     t.index ["account_id", "checksum"], name: "index_imports_on_account_id_and_checksum_completed", unique: true, where: "(((status)::text = 'completed'::text) AND (rows_failed = 0))"
     t.index ["account_id", "format_fingerprint"], name: "index_imports_on_account_id_and_format_fingerprint"
     t.check_constraint "(status::text = 'pending'::text) = (content IS NOT NULL)", name: "imports_content_only_while_pending"
@@ -107,7 +108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_180650) do
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"
     t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
-    t.check_constraint "categorization_source::text = ANY (ARRAY['learned'::character varying::text, 'ai'::character varying::text, 'manual'::character varying::text])", name: "transactions_categorization_source_valid"
+    t.check_constraint "categorization_source::text = ANY (ARRAY['learned'::character varying, 'starter_list'::character varying, 'ai'::character varying, 'manual'::character varying]::text[])", name: "transactions_categorization_source_valid"
   end
 
   create_table "users", force: :cascade do |t|
