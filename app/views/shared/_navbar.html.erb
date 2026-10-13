@@ -2,11 +2,15 @@
   <div class="mx-auto flex h-14 max-w-6xl items-center gap-8 px-4 sm:px-6">
     <%= link_to app_name.downcase, root_path, class: "text-2xl font-black tracking-tight text-mint-green" %>
 
-    <nav class="flex h-full gap-6">
-      <%= nav_link "Overview", root_path, active: controller_name == "dashboard" %>
-      <%= nav_link "Accounts", accounts_path, active: controller_name.in?(%w[accounts transactions imports]) %>
-      <%= nav_link "Categories", categories_path %>
-      <%= nav_link "Budgets", budgets_path, active: controller_name == "budgets" %>
-    </nav>
+    <% if authenticated? %>
+      <nav class="flex h-full gap-6">
+        <%= nav_link "Overview", root_path, active: controller_name == "dashboard" %>
+        <%= nav_link "Accounts", accounts_path, active: controller_name.in?(%w[accounts transactions imports]) %>
+        <%= nav_link "Categories", categories_path %>
+        <%= nav_link "Budgets", budgets_path, active: controller_name == "budgets" %>
+      </nav>
+
+      <%= button_to "Sign out", session_path, method: :delete, form: { class: "ml-auto" }, class: "btn-link whitespace-nowrap text-xs" %>
+    <% end %>
   </div>
 </header>

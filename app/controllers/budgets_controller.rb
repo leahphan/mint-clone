@@ -2,7 +2,7 @@ class BudgetsController < ApplicationController
   before_action :set_budget, only: %i[edit update destroy]
 
   def index
-    @budgets = Budget.by_category_name.to_a
+    @budgets = Current.user.budgets.by_category_name.to_a
   end
 
   def new
@@ -11,7 +11,8 @@ class BudgetsController < ApplicationController
   end
 
   def create
-    @budget = Budget.new(params.expect(budget: [ :category_id, :amount ]))
+    attributes = params.expect(budget: [ :category_id, :amount ])
+    @budget = Budget.new(amount: attributes[:amount], category: Current.user.categories.find_by(id: attributes[:category_id]))
 
     if @budget.save
       redirect_to budgets_path, notice: "Budget created."
@@ -41,7 +42,7 @@ class BudgetsController < ApplicationController
 
   private
     def set_budget
-      @budget = Budget.find(params[:id])
+      @budget = Current.user.budgets.find(params[:id])
     end
 
     def render_new
@@ -50,6 +51,6 @@ class BudgetsController < ApplicationController
     end
 
     def unbudgeted_categories
-      Category.budgetable.where.missing(:budget).order(:name)
+      Current.user.categories.budgetable.where.missing(:budget).order(:name)
     end
 end

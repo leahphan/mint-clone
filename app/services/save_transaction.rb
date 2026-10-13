@@ -1,6 +1,6 @@
 # Saves a transaction the user created or edited. A category the user picks is
-# recorded as manual and remembered for the transaction's merchant, so later
-# imports from that merchant get the same category.
+# recorded as manual and remembered on the account owner's merchant, so their
+# later imports from that merchant get the same category.
 class SaveTransaction
   def self.call(transaction, attributes)
     new(transaction, attributes).call
@@ -30,7 +30,7 @@ class SaveTransaction
     attr_reader :transaction, :attributes
 
     def learn_merchant_category
-      merchant = Merchant.for_description(transaction.description)
+      merchant = transaction.account.user.merchants.for_description(transaction.description)
       merchant.update!(category: transaction.category)
       transaction.update!(merchant: merchant)
     end

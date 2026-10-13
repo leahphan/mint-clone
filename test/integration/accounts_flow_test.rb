@@ -1,9 +1,14 @@
 require "test_helper"
 
 class AccountsFlowTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create(:user)
+    sign_in_as @user
+  end
+
   test "lists accounts" do
-    create(:account, name: "Everyday Chequing")
-    create(:account, name: "Visa", account_type: "credit_card")
+    create(:account, user: @user, name: "Everyday Chequing")
+    create(:account, user: @user, name: "Visa", account_type: "credit_card")
 
     get accounts_path
     assert_response :success
@@ -12,11 +17,11 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "shows each account's balance, including its opening balance, and a subtotal per group" do
-    chequing = create(:account, name: "Everyday Chequing")
+    chequing = create(:account, user: @user, name: "Everyday Chequing")
     create(:transaction, account: chequing, amount: "1000.00")
     create(:transaction, account: chequing, amount: "-250.00")
-    create(:account, name: "Rainy Day", account_type: "savings", opening_balance: "200.00")
-    visa = create(:account, name: "Visa", account_type: "credit_card", opening_balance: "-300.00")
+    create(:account, user: @user, name: "Rainy Day", account_type: "savings", opening_balance: "200.00")
+    visa = create(:account, user: @user, name: "Visa", account_type: "credit_card", opening_balance: "-300.00")
     create(:transaction, account: visa, amount: "-120.50")
 
     get accounts_path
@@ -30,12 +35,12 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
 
   test "lists accounts in a fixed number of queries" do
     2.times do |n|
-      account = create(:account, name: "Account #{n}")
+      account = create(:account, user: @user, name: "Account #{n}")
       3.times { create(:transaction, account: account) }
     end
 
-    # Accounts with their balances, in one query.
-    assert_queries_count(1) { get accounts_path }
+    # The signed-in session and its user, then accounts with their balances in one query.
+    assert_queries_count(3) { get accounts_path }
   end
 
   test "creates an account" do
@@ -72,7 +77,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "account page lists the opening balance after the newest-first transactions" do
-    account = create(:account, opening_balance: "500.00")
+    account = create(:account, user: @user, opening_balance: "500.00")
     create(:transaction, account: account, description: "Older", transaction_date: 2.days.ago)
     create(:transaction, account: account, description: "Newer", transaction_date: 1.day.ago)
 
@@ -83,7 +88,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "account page shows the opening balance even when it's zero and there are no transactions" do
-    account = create(:account, name: "Empty")
+    account = create(:account, user: @user, name: "Empty")
 
     get account_path(account)
 
@@ -91,7 +96,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "edits an account's opening balance" do
-    account = create(:account, name: "Visa", account_type: "credit_card")
+    account = create(:account, user: @user, name: "Visa", account_type: "credit_card")
 
     get edit_account_path(account)
     assert_response :success
@@ -103,7 +108,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the edit form when an update is invalid" do
-    account = create(:account, name: "Visa", opening_balance: "10.00")
+    account = create(:account, user: @user, name: "Visa", opening_balance: "10.00")
 
     patch account_path(account), params: { account: { name: "", opening_balance: "" } }
     assert_response :unprocessable_entity
@@ -118,7 +123,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "adds a transaction to an account" do
-    account = create(:account)
+    account = create(:account, user: @user)
 
     assert_difference "account.transactions.count", 1 do
       post account_transactions_path(account), params: {
@@ -131,7 +136,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the form when a transaction is invalid" do
-    account = create(:account)
+    account = create(:account, user: @user)
 
     assert_no_difference "Transaction.count" do
       post account_transactions_path(account), params: {
@@ -142,7 +147,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "shows an account's transactions newest first" do
-    account = create(:account)
+    account = create(:account, user: @user)
     create(:transaction, account: account, transaction_date: Date.new(2026, 9, 1), description: "Paycheque", amount: "2500.00")
     create(:transaction, account: account, transaction_date: Date.new(2026, 9, 10), description: "Groceries", amount: "-84.37")
 
@@ -153,7 +158,7 @@ class AccountsFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "shows the account's real balance" do
-    account = create(:account)
+    account = create(:account, user: @user)
     create(:transaction, account: account, amount: "2500.00")
     create(:transaction, account: account, amount: "-84.37")
 

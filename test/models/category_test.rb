@@ -11,12 +11,20 @@ class CategoryTest < ActiveSupport::TestCase
     assert_equal "Groceries", create(:category, name: "  Groceries ").name
   end
 
-  test "names are unique regardless of case and surrounding whitespace" do
-    create(:category, name: "Groceries")
+  test "names are unique per user regardless of case and surrounding whitespace" do
+    user = create(:user)
+    create(:category, user: user, name: "Groceries")
 
-    duplicate = build(:category, name: " groceries ")
+    duplicate = build(:category, user: user, name: " groceries ")
     assert_not duplicate.valid?
     assert_includes duplicate.errors[:name], "has already been taken"
+    assert_raises(ActiveRecord::RecordNotUnique) { duplicate.save(validate: false) }
+  end
+
+  test "different users can each have a category with the same name" do
+    create(:category, name: "Groceries")
+
+    assert build(:category, user: create(:user), name: "groceries").valid?
   end
 
   test "requires an expense, income, or transfer category_type" do

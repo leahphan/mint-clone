@@ -1,8 +1,13 @@
 require "test_helper"
 
 class CategoriesTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create(:user)
+    sign_in_as @user
+  end
+
   test "lists categories" do
-    create(:category, name: "Groceries")
+    create(:category, user: @user, name: "Groceries")
 
     get categories_path
     assert_response :success
@@ -26,7 +31,7 @@ class CategoriesTest < ActionDispatch::IntegrationTest
   end
 
   test "edits a category's name and type" do
-    category = create(:category, name: "Paycheck")
+    category = create(:category, user: @user, name: "Paycheck")
 
     get edit_category_path(category)
     assert_response :success
@@ -39,7 +44,7 @@ class CategoriesTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the edit form when an update is invalid" do
-    category = create(:category, name: "Groceries")
+    category = create(:category, user: @user, name: "Groceries")
 
     patch category_path(category), params: { category: { name: "", category_type: "income" } }
     assert_response :unprocessable_entity
@@ -47,7 +52,7 @@ class CategoriesTest < ActionDispatch::IntegrationTest
   end
 
   test "re-renders the page when the name is a duplicate" do
-    create(:category, name: "Groceries")
+    create(:category, user: @user, name: "Groceries")
 
     assert_no_difference "Category.count" do
       post categories_path, params: { category: { name: "groceries", category_type: "expense" } }

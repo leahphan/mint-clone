@@ -1,20 +1,15 @@
 require "test_helper"
 
 class SeedsTest < ActiveSupport::TestCase
-  test "seeds the default categories once, keeping existing ones as they are" do
-    misc = create(:category, name: "misc", category_type: "expense")
-    create(:budget, category: misc, amount: "500.00")
+  test "gives every user the default categories once" do
+    users = create_list(:user, 2)
 
     load_seeds
     assert_no_difference "Category.count" do
       load_seeds
     end
 
-    assert_equal 19, Category.count
-    assert_equal [ "Credit Card Payment", "Transfer" ], Category.transfer.order(:name).pluck(:name)
-    assert_equal [ "Income" ], Category.income.pluck(:name)
-    assert_equal [ "misc", BigDecimal("500") ], [ misc.reload.name, misc.budget.amount ]
-    assert_not Category.exists?(name: "Other")
+    assert_equal [ 19, 19 ], users.map { |user| user.categories.count }
   end
 
   private

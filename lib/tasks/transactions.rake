@@ -6,7 +6,9 @@ namespace :transactions do
     ai = TransactionCategorizer.default_classifier ? "on" : "off (set AI_CATEGORIZATION_ENABLED=true to use it)"
     puts "Categorizing #{before} uncategorized transactions. AI fallback is #{ai}."
 
-    uncategorized.in_batches(of: 500) { |batch| TransactionCategorizer.call(batch) }
+    User.find_each do |user|
+      user.transactions.where(category_id: nil).in_batches(of: 500) { |batch| TransactionCategorizer.call(batch, user: user) }
+    end
 
     remaining = uncategorized.count
     puts "Categorized #{before - remaining}; #{remaining} still uncategorized."

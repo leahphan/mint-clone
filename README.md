@@ -2,6 +2,18 @@
 
 A personal finance app inspired by Mint.com. Setup, commands and conventions are in [CLAUDE.md](CLAUDE.md).
 
+## Signing in
+
+Every page needs a signed-in user, and each user only sees their own accounts, transactions,
+imports, categories, budgets and merchants. There's no sign-up page or email password reset:
+create a user, or change a password, from a terminal in the app's directory.
+
+```bash
+bin/rails users:set_password EMAIL=you@example.com   # prompts for the password twice
+```
+
+A new user starts with the default categories. Changing a password signs that user out everywhere.
+
 ## Phone QA workflow
 
 Branches: `claude/<feature>` (Claude's work) → `staging` (ready for manual QA) → `master` (approved).
@@ -30,10 +42,24 @@ are discarded on every start. Untracked files (`log/`, `tmp/`, `storage/`, `.env
 bin/qa-refresh
 ```
 
+### One-time reset for user accounts
+
+Data from before user accounts has no owner, so the first startup with them stops at a migration
+that says to reset the database (see `log/codespace.log`). This deletes all QA data. In the
+Codespace terminal:
+
+```bash
+pkill -f puma                                        # stop Rails if it's running
+bin/rails db:reset
+bin/rails users:set_password EMAIL=you@example.com
+bin/qa-refresh
+```
+
 ### Debugging
 
 - Startup log: `log/codespace.log` (Rails request log: `log/development.log`)
-- Is Rails up? `curl -sI localhost:3000` should print `HTTP/1.1 200 OK`
+- Is Rails up? `curl -sI localhost:3000/up` should print `HTTP/1.1 200 OK` (every other page
+  redirects to sign in)
 - Restart Rails: `bin/qa-refresh`
 - Your URL (bookmark this once): `echo https://$CODESPACE_NAME-3000.$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`,
   also printed at the end of `log/codespace.log`. The pattern is
@@ -42,7 +68,7 @@ bin/qa-refresh
 
 ### If the app URL shows 502
 
-First check `curl -sI localhost:3000` in the Codespace. If it returns `HTTP/1.1 200 OK` but the
+First check `curl -sI localhost:3000/up` in the Codespace. If it returns `HTTP/1.1 200 OK` but the
 browser still shows 502, Rails is running and the Codespaces port-forwarding tunnel may be stale.
 In VS Code, open the **Ports** tab, right-click port `3000`, choose **Stop Forwarding Port**, then
 click **Forward a Port**, enter `3000`, and choose **Open in Browser** for the newly forwarded port.

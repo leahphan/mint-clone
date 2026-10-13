@@ -21,7 +21,7 @@
 
   <div>
     <%= form.label :category_id, "Category", class: "form-label" %>
-    <%= form.collection_select :category_id, Category.order(:name), :id, :name, { include_blank: "Uncategorized" }, class: "form-input" %>
+    <%= form.collection_select :category_id, Current.user.categories.order(:name), :id, :name, { include_blank: "Uncategorized" }, class: "form-input" %>
   </div>
 
   <div class="flex items-center justify-between gap-4 pt-2">

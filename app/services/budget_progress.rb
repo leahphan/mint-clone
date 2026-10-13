@@ -29,19 +29,20 @@ class BudgetProgress
     end
   end
 
-  def self.call(month)
-    new(month).call
+  def self.call(user, month)
+    new(user, month).call
   end
 
-  def initialize(month)
+  def initialize(user, month)
+    @user = user
     @month = month
   end
 
   def call
-    budgets = Budget.by_category_name.to_a
+    budgets = @user.budgets.by_category_name.to_a
     return [] if budgets.empty?
 
-    net_by_category = Transaction.in_month(@month)
+    net_by_category = @user.transactions.in_month(@month)
       .where(category_id: budgets.map(&:category_id))
       .group(:category_id)
       .sum(:amount)

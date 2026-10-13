@@ -12,6 +12,8 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root "dashboard#index"
 
+  resource :session, only: %i[new create destroy]
+
   resources :accounts, only: %i[index show new create edit update] do
     resources :transactions, only: %i[new create edit update]
     resources :imports, only: %i[new create show update destroy]

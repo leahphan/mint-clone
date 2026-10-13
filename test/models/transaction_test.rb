@@ -14,8 +14,22 @@ class TransactionTest < ActiveSupport::TestCase
   end
 
   test "can belong to a category" do
-    category = create(:category)
-    assert_equal category, create(:transaction, category: category).reload.category
+    account = create(:account)
+    category = create(:category, user: account.user)
+    assert_equal category, create(:transaction, account: account, category: category).reload.category
+  end
+
+  test "its category and merchant must belong to the account's user" do
+    account = create(:account)
+    transaction = build(:transaction, account: account, category: create(:category), merchant: create(:merchant))
+
+    assert_not transaction.valid?
+    assert_includes transaction.errors[:category], "must be one of your categories"
+    assert_includes transaction.errors[:merchant], "must be one of your merchants"
+
+    transaction.category = create(:category, user: account.user)
+    transaction.merchant = create(:merchant, user: account.user)
+    assert transaction.valid?
   end
 
   test "rejects a non-numeric amount" do
@@ -44,18 +58,20 @@ class TransactionTest < ActiveSupport::TestCase
 
   test "spending_by_category totals this month's money out per category, largest first" do
     travel_to Date.new(2026, 9, 25) do
-      groceries = create(:category, name: "Groceries")
-      dining = create(:category, name: "Dining")
-      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 1), amount: "-54.32")
-      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 30), amount: "-45.68")
-      create(:transaction, category: dining, transaction_date: Date.new(2026, 9, 10), amount: "-30.00")
-      create(:transaction, category: nil, transaction_date: Date.new(2026, 9, 12), amount: "-12.50")
-      card_payment = create(:category, name: "Credit Card Payment", category_type: "transfer")
-      create(:transaction, category: card_payment, transaction_date: Date.new(2026, 9, 20), amount: "-500.00") # transfer: not spending
+      user = create(:user)
+      account = create(:account, user: user)
+      groceries = create(:category, user: user, name: "Groceries")
+      dining = create(:category, user: user, name: "Dining")
+      create(:transaction, account: account, category: groceries, transaction_date: Date.new(2026, 9, 1), amount: "-54.32")
+      create(:transaction, account: account, category: groceries, transaction_date: Date.new(2026, 9, 30), amount: "-45.68")
+      create(:transaction, account: account, category: dining, transaction_date: Date.new(2026, 9, 10), amount: "-30.00")
+      create(:transaction, account: account, category: nil, transaction_date: Date.new(2026, 9, 12), amount: "-12.50")
+      card_payment = create(:category, user: user, name: "Credit Card Payment", category_type: "transfer")
+      create(:transaction, account: account, category: card_payment, transaction_date: Date.new(2026, 9, 20), amount: "-500.00") # transfer: not spending
 
-      create(:transaction, category: groceries, transaction_date: Date.new(2026, 9, 15), amount: "20.00") # refund: not spending
-      create(:transaction, category: groceries, transaction_date: Date.new(2026, 8, 31), amount: "-999.00") # last month
-      create(:transaction, category: groceries, transaction_date: Date.new(2026, 10, 1), amount: "-999.00") # next month
+      create(:transaction, account: account, category: groceries, transaction_date: Date.new(2026, 9, 15), amount: "20.00") # refund: not spending
+      create(:transaction, account: account, category: groceries, transaction_date: Date.new(2026, 8, 31), amount: "-999.00") # last month
+      create(:transaction, account: account, category: groceries, transaction_date: Date.new(2026, 10, 1), amount: "-999.00") # next month
 
       assert_equal [
         [ "Groceries", BigDecimal("100.00") ],
