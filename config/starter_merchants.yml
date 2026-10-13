@@ -64,6 +64,7 @@
   - "GREEN P"
   - "HUSKY"
   - "IMPARK"
+  - "INDIGO PARK"
   - "LYFT"
   - "PETRO CANADA"
   - "PETRO-CANADA"
@@ -111,13 +112,14 @@
   - "WINNERS"
 "Entertainment":
   - "CINEPLEX"
-  - "CRAVE"
   - "DISNEY PLUS"
   - "DISNEYPLUS"
   - "NETFLIX"
   - "PLAYSTATION"
+  - "ROGERS ARENA"
+  - "ROGERS CENTRE"
+  - "ROGERS PLACE"
   - "SPOTIFY"
-  - "STEAM"
   - "TICKETMASTER"
 "Health & Medical":
   - "PHARMASAVE"
@@ -137,5 +139,7 @@
   - "NSF FEE"
   - "OVERDRAFT FEE"
 "Credit Card Payment":
+  - "CANADIAN TIRE BANK"
   - "PAYMENT - THANK YOU"
   - "PAYMENT THANK YOU"
+  - "ROGERS BANK"

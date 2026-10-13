@@ -135,8 +135,14 @@ class TransactionCsvImporter
     # import shows as categorizing until it's done.
     def categorize(import)
       TransactionCategorizer.call(import.transactions, user: account.user, classifier: nil)
-      return unless TransactionCategorizer.ai_enabled? && import.transactions.where(category_id: nil).exists?
+      categorize_later(import) if TransactionCategorizer.ai_enabled? && import.transactions.where(category_id: nil).exists?
+    rescue ActiveRecord::ActiveRecordError => error
+      # The rows are already imported, so don't fail the upload: the job categorizes them instead.
+      Rails.error.report(error)
+      categorize_later(import)
+    end
 
+    def categorize_later(import)
       import.update!(categorizing_since: Time.current)
       CategorizeImportJob.perform_later(import)
     end

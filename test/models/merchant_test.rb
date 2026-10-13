@@ -61,6 +61,14 @@ class MerchantTest < ActiveSupport::TestCase
     assert_equal "Shopping", Merchant.starter_category_name(Merchant.key_for("CANADIAN TIRE #0457"))
   end
 
+  test "the starter list's longer entries win over a shorter merchant they start with" do
+    assert_equal "Shopping", Merchant.starter_category_name("INDIGO BOOKS")
+    assert_equal "Transportation", Merchant.starter_category_name(Merchant.key_for("INDIGO PARK CANADA #1234 TORONTO"))
+    assert_equal "Utilities", Merchant.starter_category_name("ROGERS WIRELESS")
+    assert_equal "Entertainment", Merchant.starter_category_name("ROGERS CENTRE TORONTO ON")
+    assert_equal "Credit Card Payment", Merchant.starter_category_name("ROGERS BANK")
+  end
+
   test "the starter list only matches whole words at the start of the key" do
     assert_nil Merchant.starter_category_name("SHELLEYS BAKERY")
     assert_nil Merchant.starter_category_name("METROLINX")

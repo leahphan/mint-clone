@@ -313,6 +313,18 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
     assert_enqueued_with job: CategorizeImportJob, args: [ import ]
   end
 
+  test "a database error while categorizing doesn't fail the import; the job categorizes it instead" do
+    import = nil
+    TransactionCategorizer.stub(:call, ->(*, **) { raise ActiveRecord::Deadlocked }) do
+      import = import_into(@chequing, csv_upload("Date,Description,Amount\n2026-10-08,CORNER BAKERY,-6.25\n"))
+    end
+
+    assert import.completed?
+    assert_equal 1, import.rows_imported
+    assert_includes Import.categorizing, import
+    assert_enqueued_with job: CategorizeImportJob, args: [ import ]
+  end
+
   test "with AI categorization enabled, an import of known merchants doesn't wait for it" do
     create(:category, user: @user, name: "Groceries")
 

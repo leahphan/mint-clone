@@ -33,8 +33,7 @@ class TransactionCategorizer
     known, unknown = by_merchant.partition { |merchant, _group| known_category(merchant) }
 
     known.each { |merchant, group| assign(group, merchant, *known_category(merchant)) }
-    classified = classify(unknown.map { |merchant, group| [ merchant, group.first ] })
-    unknown.each { |merchant, group| assign(group, merchant, *classified[merchant.id]) }
+    classifier ? classify(unknown) : unknown.each { |merchant, group| assign(group, merchant) }
   end
 
   private
@@ -45,7 +44,8 @@ class TransactionCategorizer
     def merchants_for(groups)
       return {} if groups.empty?
 
-      missing = groups.keys - user.merchants.where(key: groups.keys).pluck(:key)
+      # Sorted, so two imports inserting the same new merchants take their locks in the same order.
+      missing = (groups.keys - user.merchants.where(key: groups.keys).pluck(:key)).sort
       if missing.any?
         rows = missing.map { |key| { user_id: user.id, key: key, name: Merchant.display_name_for(key) } }
         Merchant.insert_all(rows, unique_by: %i[user_id key]) # another import may have just created some
@@ -69,23 +69,22 @@ class TransactionCategorizer
       )
     end
 
-    # Asks the classifier about [merchant, sample transaction] pairs, a batch per request.
-    # Returns { merchant id => [category id, source] } for the valid, confident answers.
-    def classify(merchants)
-      return {} unless classifier
-
-      merchants.each_slice(CLASSIFIER_BATCH_SIZE).each_with_object({}) do |batch, categories|
-        valid_answers(ask_classifier(batch), batch.size).each do |ref, (category_id, name)|
-          merchant = batch[ref - 1].first
-          categories[merchant.id] = learn(merchant, category_id, name)
+    # Asks the classifier about [merchant, transactions] pairs, a batch per request, and categorizes
+    # each batch's transactions as soon as it answers, so they show up while later batches wait.
+    def classify(unknown)
+      unknown.each_slice(CLASSIFIER_BATCH_SIZE) do |batch|
+        answers = valid_answers(ask_classifier(batch), batch.size)
+        batch.each.with_index(1) do |(merchant, group), ref|
+          assign(group, merchant, *(learn(merchant, *answers[ref]) if answers[ref]))
         end
       end
     end
 
     # The classifier is an external boundary: a failure leaves the batch's merchants uncategorized.
+    # It's asked about one transaction per merchant.
     def ask_classifier(batch)
-      merchants = batch.map.with_index(1) do |(_merchant, transaction), ref|
-        { ref: ref, description: transaction.description, amount: transaction.amount }
+      merchants = batch.map.with_index(1) do |(_merchant, group), ref|
+        { ref: ref, description: group.first.description, amount: group.first.amount }
       end
       classifier.classify_merchants(merchants: merchants, categories: categories)
     rescue StandardError => error

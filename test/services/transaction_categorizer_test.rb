@@ -20,6 +20,9 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
     end
   end
 
+  # Something that stops the job outright, like a worker shutting down (not a classifier error, which is rescued).
+  class WorkerStopped < Exception; end # rubocop:disable Lint/InheritException
+
   setup do
     @user = create(:user)
     @account = create(:account, user: @user)
@@ -104,6 +107,19 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
     assert_equal [ TransactionCategorizer::CLASSIFIER_BATCH_SIZE, 1 ], classifier.calls.map { |call| call[:merchants].size }
     assert_equal [ 1 ], classifier.calls.last[:merchants].map { |merchant| merchant[:ref] }
     assert_equal 0, @account.transactions.where(category_id: nil).count
+  end
+
+  test "categorizes each batch's transactions as soon as it's answered" do
+    (TransactionCategorizer::CLASSIFIER_BATCH_SIZE + 1).times { |n| create(:transaction, account: @account, description: "SHOP NUMBER#{n}") }
+    classifier = FakeClassifier.new do
+      raise WorkerStopped if classifier.calls.size > 1
+      confident_answer(@groceries, "A shop")
+    end
+
+    assert_raises(WorkerStopped) { TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier) }
+
+    assert_equal TransactionCategorizer::CLASSIFIER_BATCH_SIZE, @account.transactions.where(category: @groceries).count
+    assert_equal 1, @account.transactions.where(category_id: nil).count
   end
 
   test "creates the user's new merchants in one insert" do

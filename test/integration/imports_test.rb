@@ -28,10 +28,13 @@ class ImportsTest < ActionDispatch::IntegrationTest
     create(:category, user: @user, name: "Groceries")
     csv = "Date,Description,Amount\n2026-10-08,LOBLAWS #12 TORONTO,-54.32\n2026-10-09,CORNER BAKERY,-6.25\n"
 
-    with_ai_categorization { post account_imports_path(@chequing), params: { file: csv_upload(csv) } }
+    Net::HTTP.stub(:start, ->(*, **) { flunk "the upload itself must not wait for the AI" }) do
+      with_ai_categorization { post account_imports_path(@chequing), params: { file: csv_upload(csv) } }
+    end
     follow_redirect!
 
-    assert_select "turbo-frame#account_transactions[refresh=morph][target=_top] [role=status][data-controller=refresh]", text: /Categorizing new transactions/
+    frame = "turbo-frame#account_transactions[refresh=morph][target=_top]:not([src])"
+    assert_select "#{frame} [role=status][data-controller=refresh]", text: /Categorizing new transactions/
     assert_select "tbody tr", text: /LOBLAWS #12 TORONTO.*Groceries/m
     assert_select "tbody tr", text: /CORNER BAKERY.*Categorizing…/m
     get root_path

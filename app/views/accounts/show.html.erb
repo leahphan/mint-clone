@@ -10,7 +10,7 @@
 <%= turbo_frame_tag "account_transactions", target: "_top", refresh: "morph", class: "block space-y-5" do %>
   <%= render "shared/categorizing" if @categorizing_import_ids.any? %>
 
-  <section class="panel stat-strip max-w-md sm:grid-cols-2" aria-label="Account summary">
+  <section id="account_summary" class="panel stat-strip max-w-md sm:grid-cols-2" aria-label="Account summary">
     <%= render layout: "shared/stat", locals: { label: "Balance" } do %>
       <%= amount_tag @account.balance %>
     <% end %>
@@ -21,7 +21,7 @@
 
   <%= render layout: "shared/panel", locals: { title: "Transactions" } do %>
     <div class="overflow-x-auto">
-      <table class="data-table data-table-compact">
+      <table id="account_transactions_table" class="data-table data-table-compact">
         <thead>
           <tr>
             <th>Date</th>
