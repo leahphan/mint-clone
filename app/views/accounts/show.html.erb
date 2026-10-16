@@ -6,8 +6,11 @@
   <%= link_to "Add transaction", new_account_transaction_path(@account), class: "btn btn-primary" %>
 <% end %>
 
-<div class="space-y-5">
-  <section class="panel stat-strip max-w-md sm:grid-cols-2" aria-label="Account summary">
+<%# Reloads by itself while new transactions are being categorized (shared/categorizing). -%>
+<%= turbo_frame_tag "account_transactions", target: "_top", refresh: "morph", class: "block space-y-5" do %>
+  <%= render "shared/categorizing" if @categorizing_import_ids.any? %>
+
+  <section id="account_summary" class="panel stat-strip max-w-md sm:grid-cols-2" aria-label="Account summary">
     <%= render layout: "shared/stat", locals: { label: "Balance" } do %>
       <%= amount_tag @account.balance %>
     <% end %>
@@ -18,7 +21,7 @@
 
   <%= render layout: "shared/panel", locals: { title: "Transactions" } do %>
     <div class="overflow-x-auto">
-      <table class="data-table data-table-compact">
+      <table id="account_transactions_table" class="data-table data-table-compact">
         <thead>
           <tr>
             <th>Date</th>
@@ -33,7 +36,7 @@
             <tr>
               <td class="whitespace-nowrap text-mint-muted"><%= short_date transaction.transaction_date %></td>
               <td class="font-semibold"><span class="block max-w-96 truncate" title="<%= transaction.description %>"><%= transaction.description %></span><% if transaction.possible_duplicate? %><span class="block text-xs font-normal text-mint-negative">Possible duplicate</span><% end %></td>
-              <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-48 truncate"><%= transaction.category&.name || "Uncategorized" %></span></td>
+              <td class="<%= "text-mint-faint" unless transaction.category %>"><span class="block max-w-48 truncate"><%= category_label transaction, @categorizing_import_ids %></span></td>
               <td class="text-right"><%= amount_tag transaction.amount %></td>
               <td class="text-right"><%= link_to "Edit", edit_account_transaction_path(@account, transaction), class: "btn-link" %></td>
             </tr>
@@ -50,4 +53,4 @@
       </table>
     </div>
   <% end %>
-</div>
+<% end %>

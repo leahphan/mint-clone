@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ImportsTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   setup do
     @user = create(:user)
     sign_in_as @user
@@ -20,6 +22,33 @@ class ImportsTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select "p", text: "Imported 71 transactions from td_chequing.csv."
     assert_select "td", text: /SOVU\/FUFU-PAY/
+  end
+
+  test "shows known merchants' categories straight away, and the rest as categorizing until the AI is done" do
+    create(:category, user: @user, name: "Groceries")
+    csv = "Date,Description,Amount\n2026-10-08,LOBLAWS #12 TORONTO,-54.32\n2026-10-09,CORNER BAKERY,-6.25\n"
+
+    Net::HTTP.stub(:start, ->(*, **) { flunk "the upload itself must not wait for the AI" }) do
+      with_ai_categorization { post account_imports_path(@chequing), params: { file: csv_upload(csv) } }
+    end
+    follow_redirect!
+
+    frame = "turbo-frame#account_transactions[refresh=morph][target=_top]:not([src])"
+    assert_select "#{frame} [role=status][data-controller=refresh]", text: /Categorizing new transactions/
+    assert_select "tbody tr", text: /LOBLAWS #12 TORONTO.*Groceries/m
+    assert_select "tbody tr", text: /CORNER BAKERY.*Categorizing…/m
+    get root_path
+    assert_select "turbo-frame#dashboard_activity [data-controller=refresh]"
+    assert_select "tbody tr", text: /CORNER BAKERY.*Categorizing…/m
+
+    # Ollama Cloud is unreachable here, so the job finishes with the bakery still uncategorized.
+    Net::HTTP.stub(:start, ->(*, **) { raise Errno::ECONNREFUSED }) do
+      with_ai_categorization { perform_enqueued_jobs only: CategorizeImportJob }
+    end
+
+    get account_path(@chequing)
+    assert_select "[data-controller=refresh]", count: 0
+    assert_select "tbody tr", text: /CORNER BAKERY.*Uncategorized/m
   end
 
   test "says when the same file was already imported" do
@@ -161,4 +190,13 @@ class ImportsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_select "li", text: "Choose a CSV file to import."
   end
+
+  private
+    def with_ai_categorization
+      previous = ENV.to_h.slice("AI_CATEGORIZATION_ENABLED", "OLLAMA_API_KEY")
+      ENV.update("AI_CATEGORIZATION_ENABLED" => "true", "OLLAMA_API_KEY" => "test-key")
+      yield
+    ensure
+      ENV.update("AI_CATEGORIZATION_ENABLED" => previous["AI_CATEGORIZATION_ENABLED"], "OLLAMA_API_KEY" => previous["OLLAMA_API_KEY"])
+    end
 end

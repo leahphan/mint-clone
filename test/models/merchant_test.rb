@@ -52,4 +52,38 @@ class MerchantTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::InvalidForeignKey) { merchant.update!(category: create(:category)) }
     assert merchant.update!(category: create(:category, user: merchant.user))
   end
+
+  test "the starter list suggests a category for common merchants by their key" do
+    assert_equal "Groceries", Merchant.starter_category_name(Merchant.key_for("LOBLAWS #1234 TORONTO ON"))
+    assert_equal "Restaurants & Dining", Merchant.starter_category_name(Merchant.key_for("STARBUCKS COFFEE 04512"))
+    assert_equal "Shopping", Merchant.starter_category_name(Merchant.key_for("Amazon.ca*RT4Y29QL1"))
+    assert_equal "Transportation", Merchant.starter_category_name(Merchant.key_for("CANADIAN TIRE GAS #0457"))
+    assert_equal "Shopping", Merchant.starter_category_name(Merchant.key_for("CANADIAN TIRE #0457"))
+  end
+
+  test "the starter list's longer entries win over a shorter merchant they start with" do
+    assert_equal "Shopping", Merchant.starter_category_name("INDIGO BOOKS")
+    assert_equal "Transportation", Merchant.starter_category_name(Merchant.key_for("INDIGO PARK CANADA #1234 TORONTO"))
+    assert_equal "Utilities", Merchant.starter_category_name("ROGERS WIRELESS")
+    assert_equal "Entertainment", Merchant.starter_category_name("ROGERS CENTRE TORONTO ON")
+    assert_equal "Credit Card Payment", Merchant.starter_category_name("ROGERS BANK")
+  end
+
+  test "the starter list only matches whole words at the start of the key" do
+    assert_nil Merchant.starter_category_name("SHELLEYS BAKERY")
+    assert_nil Merchant.starter_category_name("METROLINX")
+    assert_nil Merchant.starter_category_name("THE METRO DINER")
+    assert_nil Merchant.starter_category_name("KAFU SEMO AND _F")
+  end
+
+  test "the starter list names only default categories, with normalized, unique keys" do
+    names = Category::DEFAULTS.values.flatten
+    prefixes = Merchant::STARTER_CATEGORIES.map(&:first)
+
+    Merchant::STARTER_CATEGORIES.each do |prefix, category_name|
+      assert_includes names, category_name
+      assert_equal prefix, Merchant.key_for(prefix), "#{prefix} isn't a normalized merchant key"
+    end
+    assert_equal prefixes.uniq, prefixes
+  end
 end

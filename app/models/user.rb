@@ -8,6 +8,7 @@ class User < ApplicationRecord
   has_many :categories
   has_many :merchants
   has_many :transactions, through: :accounts
+  has_many :imports, through: :accounts
   has_many :budgets, through: :categories
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }

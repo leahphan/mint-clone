@@ -40,4 +40,17 @@ class Merchant < ApplicationRecord
   def self.display_name_for(key)
     key.downcase.gsub(/(?<![\w'])[a-z]/, &:upcase)
   end
+
+  # [merchant key prefix, default category name] pairs from config/starter_merchants.yml, longest
+  # prefix first so "CANADIAN TIRE GAS" wins over "CANADIAN TIRE".
+  STARTER_CATEGORIES = YAML.load_file(Rails.root.join("config/starter_merchants.yml"))
+    .flat_map { |category_name, prefixes| prefixes.map { |prefix| [ prefix, category_name ] } }
+    .sort_by { |prefix, _category_name| -prefix.length }
+    .freeze
+
+  # The usual category name for a common merchant's key, from the starter list, or nil:
+  # "STARBUCKS COFFEE 1234" => "Restaurants & Dining".
+  def self.starter_category_name(key)
+    STARTER_CATEGORIES.find { |prefix, _category_name| key == prefix || key.start_with?("#{prefix} ") }&.last
+  end
 end

@@ -18,13 +18,17 @@ class OllamaClassifierTest < ActiveSupport::TestCase
   end
 
   CATEGORIES = [ { id: 7, name: "Coffee", type: "expense" } ].freeze
+  MERCHANTS = [
+    { ref: 1, description: "SQ *PILOT COFFEE", amount: BigDecimal("-4.50") },
+    { ref: 2, description: "LOBLAWS #12", amount: BigDecimal("-84.37") }
+  ].freeze
 
   setup do
     @classifier = OllamaClassifier.new(api_key: "test-key", base_url: "https://ollama.com", model: "test-model")
   end
 
-  test "asks the Ollama Cloud model with the categories and a response schema, and returns its parsed answer" do
-    answer = { "normalized_merchant" => "Pilot Coffee Roasters", "category_id" => 7, "confidence" => 0.9 }
+  test "asks the Ollama Cloud model about a batch of merchants with the categories and a response schema, and returns its parsed answer" do
+    answer = { "merchants" => [ { "ref" => 1, "normalized_merchant" => "Pilot Coffee Roasters", "category_id" => 7, "confidence" => 0.9 } ] }
     http = FakeHttp.new(ok_response({ message: { content: answer.to_json } }.to_json))
 
     result = with_http(http) { classify }
@@ -36,16 +40,18 @@ class OllamaClassifierTest < ActiveSupport::TestCase
     assert_equal "Bearer test-key", request[:headers]["Authorization"]
     body = request[:body]
     assert_equal [ "test-model", false ], body.values_at("model", "stream")
-    assert_equal %w[normalized_merchant category_id confidence], body.dig("format", "required")
-    assert_equal({ "description" => "SQ *PILOT COFFEE", "amount" => "-4.5", "categories" => [ { "id" => 7, "name" => "Coffee", "type" => "expense" } ] },
-      JSON.parse(body["messages"].last["content"]))
+    assert_equal %w[ref normalized_merchant category_id confidence], body.dig("format", "properties", "merchants", "items", "required")
+    assert_equal({
+      "transactions" => [ { "ref" => 1, "description" => "SQ *PILOT COFFEE", "amount" => "-4.5" }, { "ref" => 2, "description" => "LOBLAWS #12", "amount" => "-84.37" } ],
+      "categories" => [ { "id" => 7, "name" => "Coffee", "type" => "expense" } ]
+    }, JSON.parse(body["messages"].last["content"]))
   end
 
   test "parses an answer wrapped in a Markdown code fence" do
-    content = "```json\n{\n  \"normalized_merchant\": \"Pilot Coffee\",\n  \"category_id\": 7,\n  \"confidence\": 1.0\n}\n```"
+    content = "```json\n{\n  \"merchants\": []\n}\n```"
     http = FakeHttp.new(ok_response({ message: { content: content } }.to_json))
 
-    assert_equal({ "normalized_merchant" => "Pilot Coffee", "category_id" => 7, "confidence" => 1.0 }, with_http(http) { classify })
+    assert_equal({ "merchants" => [] }, with_http(http) { classify })
   end
 
   test "returns nil without calling Ollama when there is no API key" do
@@ -53,7 +59,7 @@ class OllamaClassifierTest < ActiveSupport::TestCase
 
     [ nil, "" ].each do |key|
       classifier = OllamaClassifier.new(api_key: key, base_url: "https://ollama.com", model: "test-model")
-      assert_nil with_http(http) { classifier.classify(description: "SQ *PILOT COFFEE", amount: BigDecimal("-4.50"), categories: CATEGORIES) }
+      assert_nil with_http(http) { classifier.classify_merchants(merchants: MERCHANTS, categories: CATEGORIES) }
     end
     assert_empty http.requests
   end
@@ -79,7 +85,7 @@ class OllamaClassifierTest < ActiveSupport::TestCase
 
   private
     def classify
-      @classifier.classify(description: "SQ *PILOT COFFEE", amount: BigDecimal("-4.50"), categories: CATEGORIES)
+      @classifier.classify_merchants(merchants: MERCHANTS, categories: CATEGORIES)
     end
 
     def with_http(http, &block)

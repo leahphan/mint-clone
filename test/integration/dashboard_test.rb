@@ -120,7 +120,8 @@ class DashboardTest < ActionDispatch::IntegrationTest
       3.times { create(:transaction, account: account, category: category) }
     end
     # The signed-in session and its user, accounts with balances, spending by category, recent transactions
-    # + their accounts and categories, budgets with their categories, and spending for all budgets.
-    assert_queries_count(9) { get root_path }
+    # + their accounts and categories, imports being categorized, budgets with their categories, and
+    # spending for all budgets.
+    assert_queries_count(10) { get root_path }
   end
 end

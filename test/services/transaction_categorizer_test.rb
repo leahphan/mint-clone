@@ -1,20 +1,27 @@
 require "test_helper"
 
 class TransactionCategorizerTest < ActiveSupport::TestCase
-  # Stands in for the AI classifier: returns a canned answer and records each call.
+  # Stands in for the AI classifier and records each request. With a block, it answers each merchant in
+  # the batch with the block's answer for its description (nil for none); otherwise with `response`.
   class FakeClassifier
     attr_reader :calls
 
-    def initialize(&answer)
+    def initialize(response: nil, &answer)
+      @response = response
       @answer = answer
       @calls = []
     end
 
-    def classify(description:, amount:, categories:)
-      calls << { description: description, amount: amount, categories: categories }
-      @answer.call(description)
+    def classify_merchants(merchants:, categories:)
+      calls << { merchants: merchants, categories: categories }
+      return @response unless @answer
+
+      { "merchants" => merchants.filter_map { |merchant| @answer.call(merchant[:description])&.merge("ref" => merchant[:ref]) } }
     end
   end
+
+  # Something that stops the job outright, like a worker shutting down (not a classifier error, which is rescued).
+  class WorkerStopped < Exception; end # rubocop:disable Lint/InheritException
 
   setup do
     @user = create(:user)
@@ -28,34 +35,100 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
   end
 
   test "uses the merchant's learned category without asking the classifier" do
-    create(:merchant, user: @user, key: "COSTCO WHOLESALE", category: @groceries)
-    transaction = create(:transaction, account: @account, description: "COSTCO WHOLESALE #123 TORONTO")
+    create(:merchant, user: @user, key: "CORNER GROCER", category: @groceries)
+    transaction = create(:transaction, account: @account, description: "CORNER GROCER #123 TORONTO")
     classifier = FakeClassifier.new { flunk "classifier should not be called" }
 
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
 
     transaction.reload
     assert_equal [ @groceries, "learned" ], [ transaction.category, transaction.categorization_source ]
-    assert_equal "COSTCO WHOLESALE", transaction.merchant.key
+    assert_equal "CORNER GROCER", transaction.merchant.key
   end
 
-  test "asks the classifier once per unknown merchant and learns its answer" do
-    first = create(:transaction, account: @account, description: "SQ *PILOT COFFEE TORONTO ON", amount: "-4.50")
-    second = create(:transaction, account: @account, description: "SQ *PILOT COFFEE TORONTO ON", amount: "-6.25")
-    classifier = FakeClassifier.new { confident_answer(@coffee) }
+  test "uses the starter list's category for a common merchant, without learning it or asking the classifier" do
+    transaction = create(:transaction, account: @account, description: "LOBLAWS #1234 TORONTO ON")
+    classifier = FakeClassifier.new { flunk "classifier should not be called" }
 
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
 
-    assert_equal 1, classifier.calls.size
-    call = classifier.calls.first
-    assert_equal "SQ *PILOT COFFEE TORONTO ON", call[:description]
+    transaction.reload
+    assert_equal [ @groceries, "starter_list" ], [ transaction.category, transaction.categorization_source ]
+    assert_equal [ "LOBLAWS", nil ], [ transaction.merchant.key, transaction.merchant.category ]
+  end
+
+  test "the merchant's learned category wins over the starter list" do
+    create(:merchant, user: @user, key: "LOBLAWS", category: @coffee)
+    transaction = create(:transaction, account: @account, description: "LOBLAWS #1234")
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
+
+    assert_equal [ @coffee, "learned" ], [ transaction.reload.category, transaction.categorization_source ]
+  end
+
+  test "skips the starter list's category when the user has no category by that name" do
+    transaction = create(:transaction, account: @account, description: "TIM HORTONS #0412")
+    classifier = FakeClassifier.new { confident_answer(@coffee, "Tim Hortons") }
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
+
+    assert_equal [ @coffee, "ai" ], [ transaction.reload.category, transaction.categorization_source ]
+  end
+
+  test "asks the classifier about all unknown merchants in one request and learns its answers" do
+    first = create(:transaction, account: @account, description: "SQ *PILOT COFFEE TORONTO ON", amount: "-4.50")
+    second = create(:transaction, account: @account, description: "SQ *PILOT COFFEE TORONTO ON", amount: "-6.25")
+    market = create(:transaction, account: @account, description: "CORNER GROCER #12", amount: "-30.00")
+    classifier = FakeClassifier.new do |description|
+      description.include?("PILOT") ? confident_answer(@coffee) : confident_answer(@groceries, "Corner Grocer")
+    end
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
+
+    call = classifier.calls.sole
+    assert_equal [ 1, 2 ], call[:merchants].map { |merchant| merchant[:ref] }
+    assert_equal [ "CORNER GROCER #12", "SQ *PILOT COFFEE TORONTO ON" ], call[:merchants].map { |merchant| merchant[:description] }.sort
     assert_equal [ "Coffee", "Groceries" ], call[:categories].map { |category| category[:name] }
 
-    [ first, second ].each(&:reload)
-    assert_equal [ [ @coffee, "ai" ] ] * 2, [ first, second ].map { |t| [ t.category, t.categorization_source ] }
+    [ first, second, market ].each(&:reload)
+    assert_equal [ [ @coffee, "ai" ] ] * 2 + [ [ @groceries, "ai" ] ], [ first, second, market ].map { |t| [ t.category, t.categorization_source ] }
     merchant = first.merchant
     assert_equal [ "Pilot Coffee Roasters", @coffee ], [ merchant.name, merchant.category ]
     assert_equal merchant, second.merchant
+    assert_equal [ "Corner Grocer", @groceries ], [ market.merchant.name, market.merchant.category ]
+  end
+
+  test "asks about at most CLASSIFIER_BATCH_SIZE merchants per request" do
+    (TransactionCategorizer::CLASSIFIER_BATCH_SIZE + 1).times { |n| create(:transaction, account: @account, description: "SHOP NUMBER#{n}") }
+    classifier = FakeClassifier.new { confident_answer(@groceries, "A shop") }
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier)
+
+    assert_equal [ TransactionCategorizer::CLASSIFIER_BATCH_SIZE, 1 ], classifier.calls.map { |call| call[:merchants].size }
+    assert_equal [ 1 ], classifier.calls.last[:merchants].map { |merchant| merchant[:ref] }
+    assert_equal 0, @account.transactions.where(category_id: nil).count
+  end
+
+  test "categorizes each batch's transactions as soon as it's answered" do
+    (TransactionCategorizer::CLASSIFIER_BATCH_SIZE + 1).times { |n| create(:transaction, account: @account, description: "SHOP NUMBER#{n}") }
+    classifier = FakeClassifier.new do
+      raise WorkerStopped if classifier.calls.size > 1
+      confident_answer(@groceries, "A shop")
+    end
+
+    assert_raises(WorkerStopped) { TransactionCategorizer.call(Transaction.all, user: @user, classifier: classifier) }
+
+    assert_equal TransactionCategorizer::CLASSIFIER_BATCH_SIZE, @account.transactions.where(category: @groceries).count
+    assert_equal 1, @account.transactions.where(category_id: nil).count
+  end
+
+  test "creates the user's new merchants in one insert" do
+    5.times { |n| create(:transaction, account: @account, description: "SHOP NUMBER#{n}") }
+
+    assert_queries_match(/INSERT INTO "merchants"/, count: 1) do
+      TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
+    end
+    assert_equal 5, @user.merchants.count
   end
 
   test "a merchant categorized by AI is learned for the next batch" do
@@ -68,29 +141,46 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
     assert_equal [ @coffee, "learned" ], [ later.reload.category, later.categorization_source ]
   end
 
-  test "rejects answers that aren't a confident choice of an offered category" do
+  test "rejects answers that aren't a confident choice of an offered category for a merchant in the batch" do
     deleted_id = create(:category, user: @user).tap(&:delete).id
-    invalid_answers = [
+    valid = { "ref" => 1, "normalized_merchant" => "Pilot", "category_id" => @coffee.id, "confidence" => 0.99 }
+    invalid_responses = [
       nil,
       "Coffee",
-      { "normalized_merchant" => "Pilot", "category_id" => deleted_id, "confidence" => 0.99 },
-      { "normalized_merchant" => "Pilot", "category_id" => @coffee.id.to_s, "confidence" => 0.99 },
-      { "normalized_merchant" => "Pilot", "category_id" => nil, "confidence" => 0.99 },
-      { "normalized_merchant" => "Pilot", "category_id" => @coffee.id, "confidence" => 0.5 },
-      { "normalized_merchant" => "Pilot", "category_id" => @coffee.id, "confidence" => "high" },
-      { "normalized_merchant" => "", "category_id" => @coffee.id, "confidence" => 0.99 },
-      { "category_id" => @coffee.id, "confidence" => 0.99 }
+      {},
+      { "merchants" => "Coffee" },
+      { "merchants" => [ "Coffee", nil ] },
+      { "merchants" => [ valid.merge("category_id" => deleted_id) ] },
+      { "merchants" => [ valid.merge("category_id" => @coffee.id.to_s) ] },
+      { "merchants" => [ valid.merge("category_id" => nil) ] },
+      { "merchants" => [ valid.merge("confidence" => 0.5) ] },
+      { "merchants" => [ valid.merge("confidence" => "high") ] },
+      { "merchants" => [ valid.merge("normalized_merchant" => "") ] },
+      { "merchants" => [ valid.except("normalized_merchant") ] },
+      { "merchants" => [ valid.merge("ref" => 2) ] },
+      { "merchants" => [ valid.merge("ref" => 0) ] },
+      { "merchants" => [ valid.merge("ref" => "1") ] },
+      { "merchants" => [ valid.except("ref") ] }
     ]
 
-    invalid_answers.each do |answer|
+    invalid_responses.each do |response|
       transaction = create(:transaction, account: @account, description: "SQ *PILOT COFFEE")
-      TransactionCategorizer.call(Transaction.where(id: transaction.id), user: @user, classifier: FakeClassifier.new { answer })
+      TransactionCategorizer.call(Transaction.where(id: transaction.id), user: @user, classifier: FakeClassifier.new(response: response))
 
       transaction.reload
-      assert_nil transaction.category, "accepted #{answer.inspect}"
+      assert_nil transaction.category, "accepted #{response.inspect}"
       assert_nil transaction.categorization_source
       assert_nil transaction.merchant.category
     end
+  end
+
+  test "uses the first answer when the classifier answers a merchant twice" do
+    transaction = create(:transaction, account: @account, description: "SQ *PILOT COFFEE")
+    response = { "merchants" => [ confident_answer(@coffee).merge("ref" => 1), confident_answer(@groceries).merge("ref" => 1) ] }
+
+    TransactionCategorizer.call(Transaction.all, user: @user, classifier: FakeClassifier.new(response: response))
+
+    assert_equal @coffee, transaction.reload.category
   end
 
   test "a classifier error leaves transactions uncategorized" do
@@ -108,20 +198,23 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
 
     assert_nil transaction.reload.category
+    assert_equal "NEW PLACE", transaction.merchant.key
   end
 
   test "AI categorization is disabled unless configured" do
     with_env("AI_CATEGORIZATION_ENABLED" => nil) do
+      assert_not TransactionCategorizer.ai_enabled?
       assert_nil TransactionCategorizer.default_classifier
     end
     with_env("AI_CATEGORIZATION_ENABLED" => "true") do
+      assert TransactionCategorizer.ai_enabled?
       assert_instance_of OllamaClassifier, TransactionCategorizer.default_classifier
     end
   end
 
   test "leaves already-categorized transactions alone" do
-    create(:merchant, user: @user, key: "COSTCO WHOLESALE", category: @groceries)
-    transaction = create(:transaction, account: @account, description: "COSTCO WHOLESALE", category: @coffee, categorization_source: "manual")
+    create(:merchant, user: @user, key: "CORNER GROCER", category: @groceries)
+    transaction = create(:transaction, account: @account, description: "CORNER GROCER", category: @coffee, categorization_source: "manual")
 
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
 
@@ -143,15 +236,15 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
 
   test "another user's learned merchant doesn't categorize this user's transaction" do
     other_user = create(:user)
-    create(:merchant, user: other_user, key: "COSTCO WHOLESALE", category: create(:category, user: other_user))
-    transaction = create(:transaction, account: @account, description: "COSTCO WHOLESALE")
+    create(:merchant, user: other_user, key: "CORNER GROCER", category: create(:category, user: other_user))
+    transaction = create(:transaction, account: @account, description: "CORNER GROCER")
 
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
 
     transaction.reload
     assert_nil transaction.category
     assert_equal @user, transaction.merchant.user
-    assert_equal 2, Merchant.where(key: "COSTCO WHOLESALE").count
+    assert_equal 2, Merchant.where(key: "CORNER GROCER").count
   end
 
   test "offers the classifier only this user's categories and learns its answer on this user's merchant only" do
@@ -180,8 +273,8 @@ class TransactionCategorizerTest < ActiveSupport::TestCase
   end
 
   test "ignores transactions in another user's accounts" do
-    create(:merchant, user: @user, key: "COSTCO WHOLESALE", category: @groceries)
-    theirs = create(:transaction, description: "COSTCO WHOLESALE")
+    create(:merchant, user: @user, key: "CORNER GROCER", category: @groceries)
+    theirs = create(:transaction, description: "CORNER GROCER")
 
     TransactionCategorizer.call(Transaction.all, user: @user, classifier: nil)
 

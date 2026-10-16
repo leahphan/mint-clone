@@ -20,4 +20,14 @@ class ImportTest < ActiveSupport::TestCase
     assert_not create(:import, :pending, created_at: 23.hours.ago).expired?
     assert_not create(:import, created_at: 1.week.ago).expired?
   end
+
+  test "an import is categorizing until its job finishes, or for at most CATEGORIZING_TIMEOUT" do
+    running = create(:import, categorizing_since: 1.minute.ago)
+    stuck = create(:import, categorizing_since: (Import::CATEGORIZING_TIMEOUT + 1.minute).ago)
+    done = create(:import)
+
+    assert_equal [ running ], Import.categorizing.to_a
+    assert_not_includes Import.categorizing, stuck
+    assert_not_includes Import.categorizing, done
+  end
 end

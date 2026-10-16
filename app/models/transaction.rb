@@ -4,8 +4,9 @@ class Transaction < ApplicationRecord
   belongs_to :import, optional: true
   belongs_to :merchant, optional: true
 
-  # How the category was set. Nil when uncategorized or set before this was tracked.
-  enum :categorization_source, { learned: "learned", ai: "ai", manual: "manual" }, prefix: :categorized_by
+  # How the category was set: the merchant's learned category, the starter list of common merchants,
+  # the AI classifier, or the user. Nil when uncategorized or set before this was tracked.
+  enum :categorization_source, { learned: "learned", starter_list: "starter_list", ai: "ai", manual: "manual" }, prefix: :categorized_by
 
   validates :transaction_date, :description, presence: true
   validates :amount, presence: true, numericality: true

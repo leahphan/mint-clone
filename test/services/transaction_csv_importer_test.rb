@@ -198,7 +198,7 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
     assert_equal [ "money_in", "heuristic" ], [ import.csv_schema.negative_means, import.schema_source ]
     assert_operator import.confidence, :<, CsvSchemaDetector::AUTO_IMPORT
     assert_equal file_fixture("credit_card_signed.csv").read, import.content
-    assert_no_enqueued_jobs only: CategorizeImportJob
+    assert_equal 0, @user.merchants.count, "nothing is categorized until the columns are confirmed"
   end
 
   test "keeps a file it can't make sense of pending with no schema" do
@@ -233,13 +233,11 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
     pending = import_into(@visa, csv_upload(ambiguous_visa_csv, filename: "visa.csv"))
     assert pending.pending?
 
-    import = nil
-    assert_enqueued_with job: CategorizeImportJob do
-      import = TransactionCsvImporter.confirm(pending, visa_schema)
-    end
+    import = TransactionCsvImporter.confirm(pending, visa_schema)
 
     assert import.completed?, import.errors.full_messages.to_sentence
     assert_equal [ "user", 24, nil ], [ import.schema_source, import.rows_imported, import.reload.content ]
+    assert_not import.transactions.exists?(merchant_id: nil), "the confirmed rows are categorized from known merchants"
 
     next_export = import_into(@visa, csv_upload(ambiguous_visa_csv.lines.first(5).join, filename: "next.csv"))
     assert_equal [ "known", 0, 5 ], [ next_export.schema_source, next_export.rows_imported, next_export.rows_skipped ]
@@ -284,23 +282,57 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
 
   # --- Categorization ---
 
-  test "categorizes only the new rows; an export of duplicates creates no work" do
+  test "categorizes new rows from known merchants before returning, and an export of duplicates creates no work" do
     groceries = create(:category, user: @user, name: "Groceries")
     create(:merchant, user: @user, key: "KAFU SEMO AND _F", category: groceries)
 
-    first = nil
-    perform_enqueued_jobs { first = import_into(@chequing, fixture_upload("td_chequing.csv", lines: 0..9)) }
-    transaction = @chequing.transactions.find_by!(transaction_date: Date.new(2026, 9, 9), amount: -130)
-    assert_equal groceries, transaction.category
-    assert_equal "KAFU SEMO AND   _F", transaction.description, "the raw description isn't changed by categorization"
+    first = import_into(@chequing, fixture_upload("td_chequing.csv", lines: 0..9))
 
-    assert_no_enqueued_jobs only: CategorizeImportJob do
-      assert_no_difference "Merchant.count" do
-        import = import_into(@chequing, csv_upload(file_fixture("td_chequing.csv").readlines.first(10).reverse.join, filename: "again.csv"))
-        assert_equal [ 0, 10 ], [ import.rows_imported, import.rows_skipped ]
-      end
+    transaction = @chequing.transactions.find_by!(transaction_date: Date.new(2026, 9, 9), amount: -130)
+    assert_equal [ groceries, "learned" ], [ transaction.category, transaction.categorization_source ]
+    assert_equal "KAFU SEMO AND   _F", transaction.description, "the raw description isn't changed by categorization"
+    assert_nil first.categorizing_since
+    assert_no_enqueued_jobs only: CategorizeImportJob
+
+    assert_no_difference "Merchant.count" do
+      import = import_into(@chequing, csv_upload(file_fixture("td_chequing.csv").readlines.first(10).reverse.join, filename: "again.csv"))
+      assert_equal [ 0, 10 ], [ import.rows_imported, import.rows_skipped ]
     end
     assert_equal 10, first.transactions.count
+  end
+
+  test "with AI categorization enabled, leaves only the unknown merchants to the background job" do
+    create(:category, user: @user, name: "Groceries")
+    csv = "Date,Description,Amount\n2026-10-08,LOBLAWS #12 TORONTO,-54.32\n2026-10-09,CORNER BAKERY,-6.25\n"
+
+    import = with_ai_categorization { import_into(@chequing, csv_upload(csv)) }
+
+    assert_equal "Groceries", @chequing.transactions.find_by!(description: "LOBLAWS #12 TORONTO").category.name
+    assert_nil @chequing.transactions.find_by!(description: "CORNER BAKERY").category
+    assert_includes Import.categorizing, import
+    assert_enqueued_with job: CategorizeImportJob, args: [ import ]
+  end
+
+  test "a database error while categorizing doesn't fail the import; the job categorizes it instead" do
+    import = nil
+    TransactionCategorizer.stub(:call, ->(*, **) { raise ActiveRecord::Deadlocked }) do
+      import = import_into(@chequing, csv_upload("Date,Description,Amount\n2026-10-08,CORNER BAKERY,-6.25\n"))
+    end
+
+    assert import.completed?
+    assert_equal 1, import.rows_imported
+    assert_includes Import.categorizing, import
+    assert_enqueued_with job: CategorizeImportJob, args: [ import ]
+  end
+
+  test "with AI categorization enabled, an import of known merchants doesn't wait for it" do
+    create(:category, user: @user, name: "Groceries")
+
+    import = with_ai_categorization { import_into(@chequing, csv_upload("Date,Description,Amount\n2026-10-08,LOBLAWS #12,-54.32\n")) }
+
+    assert_equal "starter_list", import.transactions.sole.categorization_source
+    assert_nil import.categorizing_since
+    assert_no_enqueued_jobs only: CategorizeImportJob
   end
 
   # --- Failures and races ---
@@ -365,6 +397,14 @@ class TransactionCsvImporterTest < ActiveSupport::TestCase
   private
     def import_into(account, file)
       TransactionCsvImporter.call(account, file, ai: nil)
+    end
+
+    def with_ai_categorization
+      previous = ENV["AI_CATEGORIZATION_ENABLED"]
+      ENV["AI_CATEGORIZATION_ENABLED"] = "true"
+      yield
+    ensure
+      ENV["AI_CATEGORIZATION_ENABLED"] = previous
     end
 
     def visa_schema

@@ -3,20 +3,30 @@ require "test_helper"
 class CategorizeImportJobTest < ActiveJob::TestCase
   test "categorizes the import's transactions from the account owner's learned merchants" do
     someone_else = create(:user)
-    create(:merchant, user: someone_else, key: "LOBLAWS", category: create(:category, user: someone_else))
+    create(:merchant, user: someone_else, key: "CORNER GROCER", category: create(:category, user: someone_else))
     user = create(:user)
     groceries = create(:category, user: user, name: "Groceries")
-    create(:merchant, user: user, key: "LOBLAWS", category: groceries)
+    create(:merchant, user: user, key: "CORNER GROCER", category: groceries)
     import = create(:import, account: create(:account, user: user))
-    transaction = create(:transaction, account: import.account, import: import, description: "LOBLAWS")
+    transaction = create(:transaction, account: import.account, import: import, description: "CORNER GROCER")
 
     CategorizeImportJob.perform_now(import)
 
-    assert_equal groceries, transaction.reload.category
+    assert_equal [ groceries, "learned" ], [ transaction.reload.category, transaction.categorization_source ]
+  end
+
+  test "marks the import done, even when categorizing fails" do
+    import = create(:import, categorizing_since: Time.current)
+
+    TransactionCategorizer.stub(:call, ->(*, **) { raise ActiveRecord::ConnectionFailed }) do
+      assert_raises(ActiveRecord::ConnectionFailed) { CategorizeImportJob.perform_now(import) }
+    end
+
+    assert_nil import.reload.categorizing_since
   end
 
   test "completes and leaves transactions uncategorized when AI is enabled but Ollama Cloud is down" do
-    import = create(:import)
+    import = create(:import, categorizing_since: Time.current)
     create(:category, user: import.account.user, name: "Coffee")
     transaction = create(:transaction, account: import.account, import: import, description: "SQ *PILOT COFFEE")
     previous = ENV.to_h.slice("AI_CATEGORIZATION_ENABLED", "OLLAMA_API_KEY")
@@ -27,6 +37,7 @@ class CategorizeImportJobTest < ActiveJob::TestCase
     end
 
     assert_nil transaction.reload.category
+    assert_nil import.reload.categorizing_since
   ensure
     ENV.update("AI_CATEGORIZATION_ENABLED" => previous["AI_CATEGORIZATION_ENABLED"], "OLLAMA_API_KEY" => previous["OLLAMA_API_KEY"])
   end

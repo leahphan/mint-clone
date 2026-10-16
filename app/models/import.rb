@@ -1,6 +1,8 @@
 class Import < ApplicationRecord
   # How long an upload waiting for the user to confirm its columns (and its CSV) is kept.
   PENDING_TTL = 24.hours
+  # After this long, an import still marked categorizing is assumed to have lost its job.
+  CATEGORIZING_TIMEOUT = 15.minutes
   MAX_FAILED_ROWS = 100
 
   belongs_to :account
@@ -15,6 +17,8 @@ class Import < ApplicationRecord
   validates :rows_imported, :rows_skipped, :rows_failed, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   scope :expired, -> { pending.where(created_at: ...PENDING_TTL.ago) }
+  # Imports whose transactions are waiting for the AI classifier (CategorizeImportJob).
+  scope :categorizing, -> { where(categorizing_since: CATEGORIZING_TIMEOUT.ago..) }
 
   # Deletes abandoned pending imports with their uploaded CSV. Returns how many.
   def self.purge_expired
